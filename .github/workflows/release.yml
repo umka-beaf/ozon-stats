@@ -1,0 +1,39 @@
+name: Release
+
+# Срабатывает по тегу вида v1.0.0. Собирает zip расширения и публикует
+# GitHub Release с этим zip во вложении.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check manifest.json version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(jq -r .version manifest.json)
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "::error::Тег $GITHUB_REF_NAME не совпадает с version в manifest.json ($MANIFEST_VERSION)"
+            exit 1
+          fi
+
+      - name: Build extension zip
+        run: |
+          mkdir -p dist/ozon-stats
+          cp -r manifest.json background.js popup.html popup.js popup.css content icons dist/ozon-stats/
+          cd dist/ozon-stats
+          zip -r ../../ozon-stats.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ozon-stats.zip
+          generate_release_notes: true

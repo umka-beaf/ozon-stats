@@ -1,0 +1,590 @@
+/* ==============================
+   Ozon Stats — content/styles.css
+   Стили боковой панели заказов, кнопки-переключателя и нашей самодельной
+   тёмной темы (класс html.darkreader, включается тумблером в панели).
+   Подключается декларативно через manifest.json → content_scripts[0].css,
+   поэтому здесь обычный CSS, без JS-обёртки.
+   ============================== */
+
+    #ozon-stats-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 340px;
+      height: 100vh;
+      background: linear-gradient(180deg, #f8f9fb 0%, #eef1f6 100%);
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    #ozon-stats-panel.collapsed {
+      transform: translateX(340px);
+    }
+
+    #ozon-stats-toggle {
+      position: fixed;
+      right: 340px;
+      top: 20%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: auto;
+      padding: 10px 0;
+      background: linear-gradient(180deg, #005BFF 0%, #0046cc 100%);
+      border: none;
+      border-radius: 14px 0 0 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: white;
+      box-shadow: -4px 0 16px rgba(0, 91, 255, 0.35);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2147483647;
+    }
+
+    #ozon-stats-panel.collapsed ~ #ozon-stats-toggle-fixed,
+    #ozon-stats-toggle:hover {
+      width: 42px;
+      background: linear-gradient(180deg, #0046cc 0%, #003399 100%);
+      box-shadow: -6px 0 20px rgba(0, 91, 255, 0.45);
+    }
+
+    #ozon-stats-toggle .toggle-icon {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #ozon-stats-toggle .toggle-text {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    #ozon-stats-content {
+      height: 100%;
+      overflow-y: auto;
+      padding: 20px;
+      opacity: 1;
+      transition: opacity 0.25s ease;
+    }
+
+    #ozon-stats-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #ozon-stats-content::-webkit-scrollbar-thumb {
+      background: #c1c8d4;
+      border-radius: 3px;
+    }
+
+    #ozon-stats-panel.collapsed #ozon-stats-content {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .osp-profile-details {
+      margin-bottom: 18px;
+    }
+
+    .osp-profile-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a2e;
+      list-style: none;
+    }
+
+    .osp-profile-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .osp-summary-arrow {
+      color: #9ca3af;
+      transition: transform 0.2s ease;
+    }
+
+    .osp-profile-details[open] .osp-summary-arrow {
+      transform: rotate(180deg);
+    }
+
+    .osp-profile-body {
+      padding-top: 10px;
+    }
+
+    .osp-profile {
+      background: white;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .osp-profile-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .osp-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 15px;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .osp-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .osp-user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .osp-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .osp-email {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+
+    .osp-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .osp-card-toggle {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .osp-card {
+      background: white;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .osp-card-label {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .osp-card-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .osp-card-value.blue { color: #005BFF; }
+    .osp-card-value.green { color: #10b981; }
+
+    .osp-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .osp-section-title span {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a2e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .osp-section-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .osp-section-title .osp-sum {
+      font-size: 13px;
+      font-weight: 600;
+      color: #005BFF;
+    }
+
+    .osp-badge {
+      background: linear-gradient(135deg, #005BFF 0%, #0046cc 100%);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0, 91, 255, 0.3);
+    }
+
+    .osp-orders-breakdown {
+      font-size: 12px;
+      color: #8b8f9c;
+      margin: -8px 0 14px;
+    }
+
+    .osp-orders {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .osp-order-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .osp-order-group-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding-left: 2px;
+    }
+
+    .osp-order-group-header-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8b8f9c;
+    }
+
+    .osp-order-group-pickup {
+      font-size: 11px;
+      font-weight: 400;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    .osp-order-group-header-side {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .osp-order {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .osp-order:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      border-color: #005BFF;
+    }
+
+    .osp-order-img {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .osp-order-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .osp-order-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .osp-order-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1a2e;
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+
+    .osp-order-status {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-block;
+      font-weight: 500;
+    }
+
+    .osp-order-status.ready { background: #dcfce7; color: #15803d; }
+    .osp-order-status.transit { background: #dbeafe; color: #1d4ed8; }
+    .osp-order-status.pending { background: #fef3c7; color: #b45309; }
+    .osp-order-status.service { background: #f3e8ff; color: #7c3aed; }
+
+    .osp-order-dates {
+      font-size: 12px;
+      color: #8b8f9c;
+      margin-top: 6px;
+    }
+
+    .osp-order-date-row {
+      line-height: 1.4;
+    }
+
+    .osp-order-date-row + .osp-order-date-row {
+      margin-top: 2px;
+    }
+
+    .osp-order-date-row.osp-date-soon {
+      color: #b45309;
+      font-weight: 600;
+    }
+
+    .osp-order-date-row.osp-date-urgent {
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    .osp-order-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .osp-order-price {
+      font-size: 15px;
+      font-weight: 700;
+      color: #005BFF;
+      white-space: nowrap;
+    }
+
+    .osp-copy-btn {
+      border: none;
+      background: #f3f4f6;
+      color: #6b7280;
+      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .osp-copy-btn:hover {
+      background: #e5e7eb;
+    }
+
+    .osp-loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #9ca3af;
+    }
+
+    .osp-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #005BFF;
+      border-radius: 50%;
+      animation: osp-spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes osp-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .osp-btn {
+      background: linear-gradient(135deg, #005BFF 0%, #0046cc 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 91, 255, 0.25);
+    }
+
+    .osp-btn:hover {
+      background: linear-gradient(135deg, #0046cc 0%, #003399 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 91, 255, 0.35);
+    }
+
+    .osp-btn.green {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .osp-btn.green:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+    }
+
+    .osp-btn.red {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    .osp-btn.red:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    }
+
+    .osp-empty {
+      text-align: center;
+      padding: 30px 20px;
+      color: #9ca3af;
+    }
+
+    .osp-empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    /* Сдвигаем кнопки Ozon влево, когда панель открыта */
+    body.ozon-stats-panel-open .ui-s2 [class*="close"],
+    body.ozon-stats-panel-open .ui-s2 [class*="Close"],
+    body.ozon-stats-panel-open [data-widget="webGallery"] button[class*="close"],
+    body.ozon-stats-panel-open [data-widget="webGallery"] button[class*="Close"] {
+      right: 360px !important;
+    }
+
+    /* ===== Dark Reader-style dark theme ===== */
+    html.darkreader {
+      filter: invert(100%) hue-rotate(180deg) contrast(85%) brightness(108%) !important;
+      background: #1a1c1e !important;
+      --textPositive: rgb(36, 168, 80) !important;
+    }
+
+    html.darkreader img,
+    html.darkreader video,
+    html.darkreader canvas,
+    html.darkreader picture,
+    html.darkreader svg image,
+    html.darkreader iframe {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    /* Не инвертировать медиа повторно если внутри другого ре-инвертированного элемента */
+    html.darkreader picture img,
+    html.darkreader picture video,
+    html.darkreader picture canvas,
+    html.darkreader iframe img,
+    html.darkreader iframe video {
+      filter: none !important;
+    }
+
+    /* Белый фон за картинками товаров (чтобы не было видно разницу в размерах) */
+    html.darkreader img {
+      background-color: white !important;
+    }
+    /* Исключаем логотип, иконки в шапке и мелкие картинки */
+    html.darkreader header img,
+    html.darkreader [data-widget="header"] img,
+    html.darkreader [data-widget="headerIcon"] img,
+    html.darkreader [data-widget="topBar"] img,
+    html.darkreader [data-widget="navigation"] img,
+    html.darkreader [data-widget="navBar"] img,
+    html.darkreader nav img,
+    html.darkreader #ozon-stats-panel img,
+    html.darkreader img[width="1"],
+    html.darkreader img[height="1"] {
+      background-color: transparent !important;
+    }
+
+    html.darkreader .osp-btn,
+    html.darkreader #ozon-stats-toggle,
+    html.darkreader .osp-badge {
+      filter: invert(100%) hue-rotate(180deg) !important;
+    }
+
+    .osp-dark-switch {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: #e5e7eb;
+      position: relative;
+      transition: background 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .osp-dark-switch::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .osp-dark-switch.active {
+      background: #005BFF;
+    }
+
+    .osp-dark-switch.active::after {
+      transform: translateX(20px);
+    }
