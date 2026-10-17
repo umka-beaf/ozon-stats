@@ -32,8 +32,20 @@ jobs:
           cd dist/ozon-stats
           zip -r ../../ozon-stats.zip .
 
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$TAG_VERSION" '
+            /^## \[/ { if (found) exit; if ($0 ~ "\\[" ver "\\]") { found=1; next } }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "::error::В CHANGELOG.md нет раздела для версии $TAG_VERSION"
+            exit 1
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: ozon-stats.zip
-          generate_release_notes: true
+          body_path: release_notes.md
