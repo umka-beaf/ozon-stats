@@ -2,7 +2,7 @@
 
 [🇷🇺 Русский](README.md) · 🇬🇧 English
 
-![version](https://img.shields.io/badge/version-1.0.0-blue)
+![version](https://img.shields.io/badge/version-1.0.1-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)
 ![Brave](https://img.shields.io/badge/Brave-supported-FB542B?logo=brave&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)

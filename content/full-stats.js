@@ -179,8 +179,9 @@
         var orderNum = autoId.replace('orderListTile_', '');
 
         if (!orderNum) {
+          // Ozon переименовал параметр ссылки order= в orderNumber= без предупреждения.
           var link = (common.action && common.action.link) || '';
-          var linkMatch = link.match(/order=(\d{5,}-\d{4})/);
+          var linkMatch = link.match(/order(?:Number)?=(\d{5,}-\d{4})/);
           if (linkMatch) orderNum = linkMatch[1];
         }
 

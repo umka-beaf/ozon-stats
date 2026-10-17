@@ -343,10 +343,18 @@
                 continue;
               }
 
-              // Номер заказа
+              // Номер заказа. automatizationId раньше давал orderListTile_XXXX, но Ozon
+              // убрал это поле (теперь там статичное "tileStatus") — используем ссылку
+              // на заказ у шеврона, она переживает такие перестановки надёжнее.
               const common = ti.common || {};
               const autoId = (common.testInfo && common.testInfo.automatizationId) || '';
-              let orderNum = autoId.replace('orderListTile_', '');
+              let orderNum = autoId.indexOf('orderListTile_') === 0 ? autoId.replace('orderListTile_', '') : '';
+
+              if (!orderNum) {
+                const chevronLink = (common.action && common.action.link) || '';
+                const m = chevronLink.match(/[?&]order(?:Number)?=([^&]+)/);
+                if (m) orderNum = decodeURIComponent(m[1]);
+              }
 
               // Товары
               const rb = shipment.rightBlock || {};
@@ -362,15 +370,17 @@
                 products = rb.cells;
               }
 
-              // Надёжнее, чем automatizationId — реальный номер заказа лежит
-              // в ссылке на картинку товара: /my/orderdetails/?order=XXXX&postingId=YYYY
-              for (let lp = 0; lp < products.length; lp++) {
-                const link = products[lp] && products[lp].image && products[lp].image.productMedia &&
-                    products[lp].image.productMedia.common && products[lp].image.productMedia.common.action &&
-                    products[lp].image.productMedia.common.action.link;
-                if (link) {
-                  const m = link.match(/[?&]order=([^&]+)/);
-                  if (m) { orderNum = decodeURIComponent(m[1]); break; }
+              // Ещё один фолбэк — та же ссылка, но с картинки товара, на случай
+              // если у шеврона её не будет: /my/orderdetails/?orderNumber=XXXX&postingId=YYYY
+              if (!orderNum) {
+                for (let lp = 0; lp < products.length; lp++) {
+                  const link = products[lp] && products[lp].image && products[lp].image.productMedia &&
+                      products[lp].image.productMedia.common && products[lp].image.productMedia.common.action &&
+                      products[lp].image.productMedia.common.action.link;
+                  if (link) {
+                    const m = link.match(/[?&]order(?:Number)?=([^&]+)/);
+                    if (m) { orderNum = decodeURIComponent(m[1]); break; }
+                  }
                 }
               }
 
