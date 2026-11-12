@@ -17,26 +17,26 @@
 
     // Показываем live-счётчики с анимацией
     body.innerHTML =
-      '<div style="padding: 0;">' +
-        '<div style="text-align: center; margin-bottom: 16px;">' +
-          '<div class="osp-spinner" style="margin: 0 auto 12px;"></div>' +
-          '<div style="font-size: 15px; font-weight: 700; color: #1a1a2e;" id="stats-phase">Загрузка статистики...</div>' +
+      '<div class="osp-stats">' +
+        '<div class="osp-stats-header osp-mb">' +
+          '<div class="osp-spinner osp-spinner-center"></div>' +
+          '<h2 class="osp-stats-title" id="stats-phase">Загрузка статистики...</h2>' +
         '</div>' +
-        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">' +
-          '<div style="background: white; border-radius: 14px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">📦 Заказов</div>' +
-            '<div style="font-size: 20px; font-weight: 700; color: #10b981; transition: transform 0.15s; overflow: hidden; white-space: nowrap;" id="live-orders">0</div>' +
+        '<div class="osp-stats-grid osp-stats-grid-2 osp-mb">' +
+          '<div class="osp-stat-tile">' +
+            '<div class="osp-stat-label">📦 Заказов</div>' +
+            '<div class="osp-stat-value green" id="live-orders">0</div>' +
           '</div>' +
-          '<div style="background: white; border-radius: 14px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">💰 Сумма</div>' +
-            '<div style="font-size: 20px; font-weight: 700; color: #005BFF; transition: transform 0.15s; overflow: hidden; white-space: nowrap;" id="live-sum">' + formatMoney(0) + '</div>' +
+          '<div class="osp-stat-tile">' +
+            '<div class="osp-stat-label">💰 Сумма</div>' +
+            '<div class="osp-stat-value blue" id="live-sum">' + formatMoney(0) + '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="background: white; border-radius: 14px; padding: 10px 14px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">' +
-          '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 2px;">📄 Прогресс</div>' +
-          '<div style="font-size: 13px; color: #6b7280;" id="stats-detail">Подготовка...</div>' +
+        '<div class="osp-progress-card osp-mb">' +
+          '<div class="osp-stat-label">📄 Прогресс</div>' +
+          '<div class="osp-progress-text" id="stats-detail">Подготовка...</div>' +
         '</div>' +
-        '<button class="osp-btn red" id="stats-cancel" style="margin-top: 4px;">Отмена</button>' +
+        '<button class="osp-btn red" id="stats-cancel">Отмена</button>' +
       '</div>';
 
     document.getElementById('stats-cancel').addEventListener('click', function() {
@@ -681,9 +681,12 @@
       console.error('[Ozon Stats] Ошибка статистики:', err);
       body.innerHTML =
         '<div class="osp-loading">' +
-          '<div style="color: #ef4444;">❌ Ошибка</div>' +
-          '<div style="font-size: 12px; margin-top: 8px;">' + err.message + '</div>' +
-          '<button class="osp-btn" id="back-to-main" style="margin-top: 16px;">← Назад</button>' +
+          '<div class="osp-error-icon">❌</div>' +
+          '<div class="osp-error-title">Не удалось собрать статистику</div>' +
+          '<div class="osp-error-text">' +
+            (err.message === 'Failed to fetch' ? 'Нет связи с Ozon. Проверьте подключение.' : err.message) +
+          '</div>' +
+          '<button class="osp-btn ghost" id="back-to-main">← Назад</button>' +
         '</div>';
       document.getElementById('back-to-main').addEventListener('click', loadData);
     }

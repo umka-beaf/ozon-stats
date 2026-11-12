@@ -1,0 +1,194 @@
+/* ==============================
+   Ozon Stats — site-layer.css
+   Правила слоя поверх страниц ozon.ru. Активируются классами на <html>,
+   которые ставит content/site-layer.js. Пока пользователь не включил
+   опцию, ни один селектор не срабатывает.
+   ============================== */
+
+/* --- Скрытие рекламных и служебных блоков ---
+   Только виджеты с крупной малополезной площадью; карточки товаров,
+   карусели брендов и промо на странице товара не трогаем.
+   ВНИМАНИЕ: data-widget="wallpaper" сюда не входит — это корневой
+   контейнер страницы (фон + весь layout), его скрытие гасит весь Ozon. */
+html.ozon-clean-hide-ads [data-widget="advBanner"],
+html.ozon-clean-hide-ads [data-widget="bigPromoCounterNavbar"],
+html.ozon-clean-hide-ads [data-widget="bannerCarousel"],
+html.ozon-clean-hide-ads [data-widget="bigPromoPDP"],
+html.ozon-clean-hide-ads [data-widget="bubbleRateBoughtItem"],
+html.ozon-clean-hide-ads [data-widget="alertPopup"] {
+  display: none !important;
+}
+/* Промо, встроенное прямо в шапку: отдельного data-widget у него нет, только
+   картинка из ir.ozone.ru/s3/*-widgets-api-images/ в двух обёртках с
+   хешированными классами. Прячем обёртку: у самой картинки родитель держит
+   фиксированные 100px, и display:none на ней оставлял пустую полосу. */
+html.ozon-clean-hide-ads header div:has(img[src*="widgets-api-images"]) {
+  display: none !important;
+}
+
+/* --- Тихие цены ---
+   Два независимых флага; классы ставит JS: зачёркнутую цену нельзя
+   поймать селектором. */
+html.ozon-clean-hide-old .ozon-clean-struck {
+  display: none !important;
+}
+html.ozon-clean-hide-discount .ozon-clean-discount {
+  display: none !important;
+}
+
+/* --- Вписать название ---
+   Классы ставит JS на текстовый узел названия карточки: ozon-clean-title
+   всегда, плюс ozon-clean-title-box на родном контейнере Ozon (у него уже
+   стоит -webkit-line-clamp: 2) или ozon-clean-title-self на самом листе,
+   если контейнера нет. Полный текст доступен в нативном тултипе. */
+html.ozon-clamp-titles .ozon-clean-title-box {
+  -webkit-line-clamp: 4 !important;
+}
+html.ozon-clamp-titles .ozon-clean-title-self {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Тема сайта ---
+   Класс ozon-site-dark ставит site-layer.js на <html> по настройке
+   siteTheme (auto — по prefers-color-scheme). Переопределяем только
+   семантические токены и несколько мест с инлайновым белым фоном.
+   «Inverted»-токены (хвост Inverted / OnDark / LightKey) не трогаем:
+   они означают «белое на цветном», и в тёмной теме должны остаться
+   белыми. Никакого filter: invert. */
+:root.ozon-site-dark {
+  color-scheme: dark;
+
+  --layerFloor0: #101317;
+  --layerFloor1: #1a1e24;
+  --bgPrimary: #14181d;
+  --ozBGPrimary: #171b21;
+  --ozBGSecondary: #1a1e24;
+  --bgSecondary: rgba(255, 255, 255, 0.06);
+  --bgOverlap: rgba(255, 255, 255, 0.1);
+  --ozSeparator: rgba(255, 255, 255, 0.12);
+  --graphicNeutral: rgba(255, 255, 255, 0.25);
+
+  --textPrimary: #e8eaed;
+  --ozTextPrimary: #e8eaed;
+  --textSecondary: rgba(232, 234, 237, 0.68);
+  --textTertiary: rgba(232, 234, 237, 0.45);
+  --ozTextQuaternary: #8b949e;
+  --graphicTertiary: rgba(255, 255, 255, 0.4);
+
+  --ozBGPrimaryHover: #2a2f38;
+  --bgActionSecondary: rgba(55, 175, 255, 0.16);
+  --bgNegativeSecondary: rgba(245, 60, 20, 0.14);
+  /* Плашка скидки и её градиент-затухание заданы этим токеном инлайново
+     (style="background: var(--bgLightKey)"). Без переопределения в тёмной
+     теме по ним остаются белые пилюли и светлые полосы поверх карточек. */
+  --bgLightKey: #1a1e24;
+}
+
+/* Фон страницы и шапки: у части элементов он задан инлайновым #fff. */
+html.ozon-site-dark,
+html.ozon-site-dark body {
+  background: #101317 !important;
+}
+html.ozon-site-dark header {
+  background-color: #1a1e24 !important;
+}
+
+/* Светлые подложки, заданные инлайновым стилем или стабильными виджетами.
+   Хешированные классы здесь не используем: они меняются между релизами. */
+html.ozon-site-dark [style*="#f5f7fa" i],
+html.ozon-site-dark [style*="background-color:#fff" i],
+html.ozon-site-dark [style*="background-color: #fff" i] {
+  background-color: #14181d !important;
+}
+html.ozon-site-dark [data-widget="wallpaper"],
+html.ozon-site-dark [data-widget="searchBarDesktop"],
+html.ozon-site-dark [data-widget="footer"],
+html.ozon-site-dark [data-widget="catalogMenu"] {
+  background-color: #14181d !important;
+}
+
+/* Шапка, которая появляется поверх страницы при прокрутке. Это отдельный
+   fixed-слой вне <header>: белая подложка нарисована псевдоэлементом или
+   градиентом, поэтому ни правило для header, ни markSurfaces её не гасят,
+   и светлый текст из токенов оказывается на белом. Класс ozon-clean-header
+   ставит JS на сам слой. */
+html.ozon-site-dark .ozon-clean-header,
+html.ozon-site-dark .ozon-clean-header::before,
+html.ozon-site-dark .ozon-clean-header::after {
+  background-color: #14181d !important;
+  background-image: none !important;
+}
+
+/* Боковая колонка каталога: текст задан литеральным тёмным цветом, а белая
+   подложка — псевдоэлементом ::before, а не фоном самого элемента. */
+html.ozon-site-dark aside {
+  color: #e8eaed !important;
+}
+html.ozon-site-dark aside::before {
+  background-color: #1a1e24 !important;
+}
+
+/* Элементы, у которых фон/цвет заданы литералами: классы ставит JS. */
+html.ozon-site-dark .ozon-clean-surface {
+  background-color: #1a1e24 !important;
+  color: #e8eaed;
+}
+html.ozon-site-dark .ozon-clean-dim {
+  color: #e8eaed !important;
+}
+
+/* Карточка товара: фон плитки и её заголовок/цена. */
+html.ozon-site-dark .tile-root {
+  color: #e8eaed;
+}
+html.ozon-site-dark .tile-root picture,
+html.ozon-site-dark .tile-root img {
+  background-color: transparent;
+}
+
+/* --- Точки количества фото ---
+   Неактивные точки — полупрозрачный тёмно-синий, на тёмной подложке
+   карточки не видны. Замена на нейтральный серый: читается и на тёмном
+   фоне, и на светлых фотографиях товара. Активную точку не трогаем. */
+html.ozon-site-dark .ozon-clean-dot {
+  background-color: #9aa4ae !important;
+}
+
+/* --- Цена за единицу --- */
+html .ozon-clean-unit {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #eef4ff;
+  color: #0050e0;
+  font-family: "Ozon Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: top;
+}
+html.ozon-site-dark .ozon-clean-unit {
+  background: rgba(77, 141, 255, 0.18);
+  color: #9cc0ff;
+}
+
+/* --- Широкий режим ---
+   Ozon держит контент в 1472 px, и на мониторах шире 1600 остаются пустые
+   поля. Расширяем контейнер с товарами до 2000 px: на главной карточки
+   растягиваются на 1/5 ширины (число в ряду не меняется, ряды нарезаны по
+   5), на выдаче сетка на 12 колонок растягивается сама и остаётся 4 в ряд.
+   Ниже 1601 px не вмешиваемся. */
+@media (min-width: 1601px) {
+  html.ozon-wide-content .ozon-wide-box {
+    max-width: 2000px;
+  }
+  html.ozon-wide-content .ozon-wide-row > .tile-root {
+    width: calc((100% - 40px) / 5);
+  }
+}

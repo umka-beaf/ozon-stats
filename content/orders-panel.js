@@ -11,8 +11,12 @@
 
   function statusClass(status) {
     const s = (status || '').toLowerCase();
-    if (s.indexOf('забир') >= 0 || s.indexOf('готов') >= 0 || s.indexOf('ожидает') >= 0) return 'ready';
-    if (s.indexOf('пути') >= 0 || s.indexOf('едет') >= 0 || s.indexOf('доставля') >= 0) return 'transit';
+    // «Ожидает оплаты» — не готово к выдаче, поэтому «ожидает» без «оплат».
+    if (s.indexOf('забир') >= 0 || s.indexOf('забра') >= 0 || s.indexOf('готов') >= 0 || s.indexOf('выдач') >= 0) return 'ready';
+    if (s.indexOf('ожидает') >= 0 && s.indexOf('оплат') < 0) return 'ready';
+    // «Доставим сегодня/завтра» — будущее время, поэтому «достав», а не «доставля».
+    // «Ожидаем сегодня/завтра» — ещё не готово, значит в пути, а не в выдаче.
+    if (s.indexOf('пути') >= 0 || s.indexOf('едет') >= 0 || s.indexOf('достав') >= 0 || s.indexOf('ожидаем') >= 0) return 'transit';
     if (s.indexOf('собир') >= 0 || s.indexOf('формир') >= 0 || s.indexOf('принят') >= 0) return 'pending';
     return 'service';
   }
@@ -23,6 +27,15 @@
     if (t.indexOf('постамат') >= 0) return '📮';
     if (t.indexOf('курьер') >= 0) return '🚚';
     return '📍';
+  }
+
+  // Склонение числительных: 1 заказ, 2 заказа, 5 заказов
+  function plural(n, one, few, many) {
+    const n10 = n % 10;
+    const n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return n + ' ' + one;
+    if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return n + ' ' + few;
+    return n + ' ' + many;
   }
 
   // Многоуровневая сортировка активных заказов:
@@ -335,11 +348,13 @@
               const ti = shipment.leftBlock.textIcon || {};
               const statusText = (ti.text && ti.text.text) || '';
 
-              // Пропускаем завершённые
+              // Пропускаем завершённые. «Доставлен в пункт выдачи» — ещё не
+              // получен, это готовность к выдаче, поэтому исключение по «выдач».
               const stLow = statusText.toLowerCase();
-              if (stLow.indexOf('доставлен') >= 0 || stLow.indexOf('получен') >= 0 ||
+              if ((stLow.indexOf('доставлен') >= 0 && stLow.indexOf('выдач') < 0) ||
+                  stLow.indexOf('получен') >= 0 ||
                   stLow.indexOf('выдан') >= 0 || stLow.indexOf('отмен') >= 0 ||
-                  stLow.indexOf('возвр') >= 0 || stLow.indexOf('завершен') >= 0) {
+                  stLow.indexOf('возвр') >= 0 || stLow.indexOf('заверш') >= 0) {
                 continue;
               }
 
@@ -638,11 +653,12 @@
       console.error('[Ozon Stats] Ошибка:', err);
       document.getElementById('osp-body').innerHTML =
         '<div class="osp-loading">' +
-          '<div style="color: #ef4444; font-size: 32px; margin-bottom: 12px;">❌</div>' +
-          '<div style="font-weight: 600; margin-bottom: 8px;">Ошибка загрузки</div>' +
-          '<div style="font-size: 12px; margin-bottom: 16px;">' + err.message + '</div>' +
-          '<button class="osp-btn" onclick="location.reload()">🔄 Обновить страницу</button>' +
+          '<div class="osp-error-icon">❌</div>' +
+          '<div class="osp-error-title">Не удалось загрузить заказы</div>' +
+          '<div class="osp-error-text">Проверьте подключение к Ozon и попробуйте ещё раз.</div>' +
+          '<button class="osp-btn" id="osp-retry">🔄 Повторить</button>' +
         '</div>';
+      document.getElementById('osp-retry').addEventListener('click', loadData);
     }
   }
 
@@ -652,6 +668,10 @@
   function renderOrdersScreen(name, email, avatar, regDate, balance, points, orders) {
       // Рендерим
       const body = document.getElementById('osp-body');
+      const panel = document.getElementById('ozon-stats-panel');
+      const isDark = panel ? panel.classList.contains('osp-dark') : false;
+      const scroll = document.getElementById('ozon-stats-content');
+      if (scroll) scroll.scrollTop = 0;
 
       const prevDetails = document.getElementById('osp-profile-details');
       const wasOpen = prevDetails ? prevDetails.open : false;
@@ -685,23 +705,62 @@
                 <div class="osp-card-label">🎁 Баллы</div>
                 <div class="osp-card-value green">${points.toLocaleString('ru-RU')}</div>
               </div>
-              <div class="osp-card osp-card-toggle" id="osp-dark-toggle">
-                <div class="osp-card-label">🌙 Тема</div>
-                <div class="osp-dark-switch${document.documentElement.classList.contains('darkreader') ? ' active' : ''}" id="osp-dark-switch"></div>
-              </div>
             </div>
+            <button type="button" class="osp-theme-row" id="osp-dark-toggle" role="switch" aria-checked="${isDark}">
+              <span>🌙 Тёмная тема</span>
+              <span class="osp-dark-switch${isDark ? ' active' : ''}" id="osp-dark-switch" aria-hidden="true"></span>
+            </button>
+
+            ${(function() {
+              const s = window.__ozonStats.clean
+                ? window.__ozonStats.clean.getSettings()
+                : { hideAds: false, hideOldPrice: false, hideDiscount: false, unitExact: false, clampTitles: false, wideContent: false, siteTheme: 'auto' };
+              function check(key, label, hint) {
+                return '<label class="osp-clean-check">' +
+                  '<input type="checkbox" data-clean-check="' + key + '"' + (s[key] ? ' checked' : '') + '>' +
+                  '<span>' + label + (hint ? '<small>' + hint + '</small>' : '') + '</span>' +
+                '</label>';
+              }
+              function seg(key, label, values) {
+                return '<div class="osp-clean-field">' +
+                  '<span class="osp-clean-field-label">' + label + '</span>' +
+                  '<div class="osp-seg" role="radiogroup" aria-label="' + label + '">' +
+                    values.map(function(v) {
+                      return '<label class="osp-seg-item">' +
+                        '<input type="radio" name="osp-seg-' + key + '" value="' + v[0] + '"' +
+                          ' data-clean-segment="' + key + '"' +
+                          (String(s[key]) === String(v[0]) ? ' checked' : '') + '>' +
+                        '<span>' + v[1] + '</span>' +
+                      '</label>';
+                    }).join('') +
+                  '</div>' +
+                '</div>';
+              }
+              return '<div class="osp-clean-settings" id="osp-clean-settings">' +
+                '<div class="osp-clean-title">Ozon Clean</div>' +
+                check('hideAds', 'Скрыть баннеры и рекламу') +
+                check('hideOldPrice', 'Скрыть зачёркнутую цену') +
+                check('hideDiscount', 'Скрыть скидку −NN%') +
+                check('unitExact', 'Цена за кг/л — точно', 'запрос карточки, кеш 7 дней') +
+                check('clampTitles', 'Вписать название в карточку', 'четыре строки, шрифт подгоняется под текст') +
+                check('wideContent', 'Широкий режим', 'мониторы шире 1600 px: контент на всю ширину') +
+                seg('siteTheme', 'Тема сайта', [
+                  ['auto', 'авто'], ['light', 'светлая'], ['dark', 'тёмная']
+                ]) +
+              '</div>';
+            })()}
           </div>
         </details>
 
         <div class="osp-section-title">
-          <span>📦 Активные заказы</span>
+          <h2 class="osp-section-heading">📦 Активные заказы</h2>
           <div class="osp-section-meta">
             <span class="osp-sum">${formatMoney(orders.reduce((s, o) => s + (o.price || 0), 0))}</span>
             <span class="osp-badge">${orders.length}</span>
           </div>
         </div>
         ${(function() {
-          const labels = { ready: 'готово', transit: 'в пути', pending: 'собирается', service: 'в обработке' };
+          const labels = { ready: 'готово к выдаче', transit: 'в пути', pending: 'собирается', service: 'в обработке' };
           const counts = {};
           for (const o of orders) {
             const c = statusClass(o.status);
@@ -722,7 +781,7 @@
               const pickupHtml = group.pickupPoint ?
                   '<div class="osp-order-group-pickup">' + pickupIcon(group.pickupPoint) + ' ' + group.pickupPoint + '</div>' : '';
               const copyHtml = group.orderNumber ?
-                  '<button class="osp-copy-btn" data-copy-number="' + group.orderNumber + '" title="Скопировать номер заказа">📋</button>' : '';
+                  '<button class="osp-copy-btn" data-copy-number="' + group.orderNumber + '" title="Скопировать номер заказа" aria-label="Скопировать номер заказа ' + group.orderNumber + '">📋</button>' : '';
               // Если товаров в заказе несколько — их сумма нигде больше не
               // показана, добавляем её тем же цветом/стилем, что и цена товара.
               const totalHtml = group.items.length > 1 ?
@@ -752,7 +811,14 @@
                   planDateHtml = '<div class="osp-order-dates"><div class="' + cls + '">🚚 ' + o.planDate + '</div></div>';
                 }
 
-                return '<div class="osp-order" data-order-number="' + (o.orderNumber || '') + '">' +
+                const orderHref = o.orderNumber ?
+                    'https://www.ozon.ru/my/orderdetails/?order=' + encodeURIComponent(o.orderNumber) : '';
+                const cardOpen = orderHref ?
+                    '<a class="osp-order" href="' + orderHref + '" target="_blank" rel="noopener">' :
+                    '<div class="osp-order">';
+                const cardClose = orderHref ? '</a>' : '</div>';
+
+                return cardOpen +
                   '<div class="osp-order-info">' +
                     '<div class="osp-order-title">' + o.title + '</div>' +
                     '<span class="osp-order-status ' + statusClass(o.status) + '">' + o.status + '</span>' +
@@ -764,7 +830,7 @@
                       (o.image ? '<img src="' + o.image + '" alt="">' : '📦') +
                     '</div>' +
                   '</div>' +
-                '</div>';
+                cardClose;
               }).join('');
 
               return '<div class="osp-order-group">' + groupHeader + itemsHtml + '</div>';
@@ -793,15 +859,6 @@
         loadData();
       });
 
-      // Клик по карточке заказа — открываем страницу заказа на Ozon в новой вкладке
-      document.querySelectorAll('.osp-order[data-order-number]').forEach(function(card) {
-        const num = card.getAttribute('data-order-number');
-        if (!num) return;
-        card.addEventListener('click', function() {
-          window.open('https://www.ozon.ru/my/orderdetails/?order=' + encodeURIComponent(num), '_blank');
-        });
-      });
-
       // Копирование номера заказа по клику на значок (не открывая карточку)
       document.querySelectorAll('.osp-copy-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
@@ -822,28 +879,35 @@
         count: groupOrdersByNumber(orders).length,
       });
 
-      // Тёмная тема — переключатель (Dark Reader стиль)
+      // Тёмная тема — переключаем только панель, страницу Ozon не трогаем
       document.getElementById('osp-dark-toggle').addEventListener('click', function() {
-        var html = document.documentElement;
-        var sw = document.getElementById('osp-dark-switch');
-        var isDark = html.classList.toggle('darkreader');
-        if (sw) {
-          if (isDark) {
-            sw.classList.add('active');
-          } else {
-            sw.classList.remove('active');
-          }
-        }
-        // Сбрасываем все фиксы тёмной темы при выключении
-        if (!isDark && typeof window.__ozonResetDarkFixes === 'function') {
-          window.__ozonResetDarkFixes();
-        }
+        const panel = document.getElementById('ozon-stats-panel');
+        const sw = document.getElementById('osp-dark-switch');
+        const isDark = panel.classList.toggle('osp-dark');
+        if (sw) sw.classList.toggle('active', isDark);
+        this.setAttribute('aria-checked', String(isDark));
         try {
           localStorage.setItem('ozon_dark_theme', isDark ? '1' : '0');
         } catch(e) {}
-        // Перезагружаем страницу для корректного применения/сброса темы
-        location.reload();
       });
+
+      // Ozon Clean — настройки слоя поверх страниц Ozon
+      const cleanBox = document.getElementById('osp-clean-settings');
+      if (cleanBox) {
+        cleanBox.querySelectorAll('[data-clean-check]').forEach(function(box) {
+          box.addEventListener('change', function() {
+            if (window.__ozonStats.clean) {
+              window.__ozonStats.clean.set(box.getAttribute('data-clean-check'), box.checked);
+            }
+          });
+        });
+        cleanBox.querySelectorAll('[data-clean-segment]').forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            if (!radio.checked) return;
+            if (window.__ozonStats.clean) window.__ozonStats.clean.set(radio.getAttribute('data-clean-segment'), radio.value);
+          });
+        });
+      }
 
       // Кнопка статистики — проверяем сохранённые данные
       document.getElementById('osp-stats').addEventListener('click', function() {
@@ -880,7 +944,7 @@
         const cls = statusClass(status);
         if (!isFirstRun && prev[key] !== status && (cls === 'ready' || cls === 'transit')) {
           const title = (g.items[0] && g.items[0].title) || 'Товар';
-          const message = cls === 'ready' ? 'Можно забирать: ' + title : 'В пути: ' + title;
+          const message = cls === 'ready' ? 'Можно забрать: ' + title : 'В пути: ' + title;
           chrome.runtime.sendMessage({ type: 'osp-order-notification', message: message });
         }
       }
@@ -909,9 +973,10 @@
   // ====== Общая функция рендера результата статистики ======
   function renderStatsResult(data, isCached) {
     var body = document.getElementById('osp-body');
+    var scroll = document.getElementById('ozon-stats-content');
+    if (scroll) scroll.scrollTop = 0;
     var totalSpent = data.totalSpent || 0;
     var totalItems = data.totalItems || 0;
-    var totalPages = data.totalPages || 0;
     var orderCount = data.orderCount || 0;
     var yearlySpending = data.yearlySpending || {};
     var yearlyOrders = data.yearlyOrders || {};
@@ -943,101 +1008,93 @@
       var ordersCount = yearlyOrders[y] || 0;
       var pct = Math.round((spent / maxSpent) * 100);
       yearsHtml +=
-        '<div style="background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
-          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">' +
-            '<span style="font-size: 15px; font-weight: 600; color: #1a1a2e;">' + y + '</span>' +
-            '<span style="font-size: 11px; color: #9ca3af;">' + ordersCount + ' заказов</span>' +
+        '<div class="osp-year-card">' +
+          '<div class="osp-year-row">' +
+            '<span class="osp-year-label">' + y + '</span>' +
+            '<span class="osp-year-orders">' + plural(ordersCount, 'заказ', 'заказа', 'заказов') + '</span>' +
           '</div>' +
-          '<div style="background: #e5e7eb; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 6px;">' +
-            '<div style="background: linear-gradient(90deg, #005BFF, #0046cc); height: 100%; width: ' + pct + '%; border-radius: 6px; transition: width 0.6s ease;"></div>' +
+          '<div class="osp-year-bar">' +
+            '<div class="osp-year-fill" style="width: ' + pct + '%;"></div>' +
           '</div>' +
-          '<div style="font-size: 14px; font-weight: 700; color: #005BFF;">' + formatMoney(spent) + '</div>' +
+          '<div class="osp-year-sum">' + formatMoney(spent) + '</div>' +
         '</div>';
     }
 
     var updatedText = '';
-    if (isCached && lastUpdated) {
+    if (lastUpdated) {
       try {
         var d = new Date(lastUpdated);
-        updatedText = '<div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">Обновлено: ' + d.toLocaleString('ru-RU') + '</div>';
+        updatedText = '<div class="osp-stats-updated">Обновлено: ' + d.toLocaleString('ru-RU') + '</div>';
       } catch(e) {}
     }
 
     body.innerHTML =
-      '<div style="padding: 0;">' +
-        '<div style="text-align: center; margin-bottom: 20px;">' +
-          '<div style="font-size: 32px; margin-bottom: 8px;">📊</div>' +
-          '<div style="font-size: 16px; font-weight: 700; color: #1a1a2e;">Статистика за всё время</div>' +
-          '<div style="font-size: 12px; color: #9ca3af;">Страниц: ' + totalPages + ' | Заказов: ' + orderCount + '</div>' +
+      '<div class="osp-stats">' +
+        '<div class="osp-stats-header">' +
+          '<div class="osp-stats-icon">📊</div>' +
+          '<h2 class="osp-stats-title">Статистика за всё время</h2>' +
+          '<div class="osp-stats-sub">Заказов: ' + orderCount + '</div>' +
           updatedText +
         '</div>' +
 
-        /* --- Главные показатели --- */
-        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">' +
-          '<div style="background: white; border-radius: 14px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">💰 Потрачено</div>' +
-            '<div style="font-size: 20px; font-weight: 700; color: #005BFF; overflow: hidden; white-space: nowrap;" id="stat-spent">' + formatMoney(totalSpent) + '</div>' +
+        '<div class="osp-stats-grid osp-stats-grid-2 osp-mb">' +
+          '<div class="osp-stat-tile">' +
+            '<div class="osp-stat-label">💰 Потрачено</div>' +
+            '<div class="osp-stat-value blue" id="stat-spent">' + formatMoney(totalSpent) + '</div>' +
           '</div>' +
-          '<div style="background: white; border-radius: 14px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">📦 Товаров</div>' +
-            '<div style="font-size: 20px; font-weight: 700; color: #10b981; overflow: hidden; white-space: nowrap;" id="stat-items">' + totalItems + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        /* --- Средний чек / Мин / Макс --- */
-        '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">' +
-          '<div style="background: white; border-radius: 12px; padding: 12px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: center;">' +
-            '<div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px;">Средний чек</div>' +
-            '<div style="font-size: 16px; font-weight: 700; color: #8b5cf6; overflow: hidden; white-space: nowrap;">' + formatMoney(avgCheck) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 12px; padding: 12px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: center;">' +
-            '<div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px;">Макс. заказ</div>' +
-            '<div style="font-size: 16px; font-weight: 700; color: #ef4444; overflow: hidden; white-space: nowrap;">' + formatMoney(maxOrder) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 12px; padding: 12px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-align: center;">' +
-            '<div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px;">Мин. заказ</div>' +
-            '<div style="font-size: 16px; font-weight: 700; color: #f59e0b; overflow: hidden; white-space: nowrap;">' + formatMoney(minOrder) + '</div>' +
+          '<div class="osp-stat-tile">' +
+            '<div class="osp-stat-label">📦 Товаров</div>' +
+            '<div class="osp-stat-value green" id="stat-items">' + totalItems + '</div>' +
           '</div>' +
         '</div>' +
 
-        /* --- Отменённые заказы --- */
+        '<div class="osp-stats-grid osp-stats-grid-3 osp-mb">' +
+          '<div class="osp-stat-tile center">' +
+            '<div class="osp-stat-label">Средний чек</div>' +
+            '<div class="osp-stat-value violet">' + formatMoney(avgCheck) + '</div>' +
+          '</div>' +
+          '<div class="osp-stat-tile center">' +
+            '<div class="osp-stat-label">Макс. заказ</div>' +
+            '<div class="osp-stat-value red">' + formatMoney(maxOrder) + '</div>' +
+          '</div>' +
+          '<div class="osp-stat-tile center">' +
+            '<div class="osp-stat-label">Мин. заказ</div>' +
+            '<div class="osp-stat-value amber">' + formatMoney(minOrder) + '</div>' +
+          '</div>' +
+        '</div>' +
+
         (cancelledCount > 0 ?
-        '<div style="background: linear-gradient(135deg, #fef2f2, #fff1f2); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">' +
+        '<div class="osp-cancel-card osp-mb">' +
           '<div>' +
-            '<div style="font-size: 11px; color: #9ca3af; margin-bottom: 2px;">🚫 Отменённые заказы</div>' +
-            '<div style="font-size: 15px; font-weight: 700; color: #ef4444;">' + formatMoney(cancelledSum) + '</div>' +
+            '<div class="osp-cancel-label">🚫 Отменённые заказы</div>' +
+            '<div class="osp-cancel-value">' + formatMoney(cancelledSum) + '</div>' +
           '</div>' +
-          '<div style="background: #fee2e2; border-radius: 8px; padding: 4px 10px;">' +
-            '<span style="font-size: 13px; font-weight: 600; color: #ef4444;">' + cancelledCount + ' шт.</span>' +
-          '</div>' +
+          '<div class="osp-cancel-pill">' + cancelledCount + ' шт.</div>' +
         '</div>' : '') +
 
-        /* --- Рекорды --- */
-        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">' +
-          /* Рекордный месяц */
-          '<div style="background: linear-gradient(135deg, #eff6ff, #eef2ff); border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
-            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">' +
-              '<span style="font-size: 10px; color: #9ca3af;">🏆 Рекорд. месяц</span>' +
-              (recordMonthLabel ? '<span style="font-size: 9px; background: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 6px; font-weight: 600;">' + recordMonthLabel + '</span>' : '') +
+        '<div class="osp-stats-grid osp-stats-grid-2 osp-mb">' +
+          '<div class="osp-record-card blue">' +
+            '<div class="osp-record-row">' +
+              '<span class="osp-record-label">🏆 Рекорд. месяц</span>' +
+              (recordMonthLabel ? '<span class="osp-record-chip blue">' + recordMonthLabel + '</span>' : '') +
             '</div>' +
-            '<div style="font-size: 14px; font-weight: 700; color: #2563eb; margin-bottom: 2px; overflow: hidden; white-space: nowrap;">' + formatMoney(recordMonthSpent) + '</div>' +
-            '<div style="font-size: 10px; color: #6b7280;">' + recordMonthOrders + ' заказов</div>' +
+            '<div class="osp-record-value blue">' + formatMoney(recordMonthSpent) + '</div>' +
+            '<div class="osp-record-sub">' + plural(recordMonthOrders, 'заказ', 'заказа', 'заказов') + '</div>' +
           '</div>' +
-          /* Рекордный шоппинг */
-          '<div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
-            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">' +
-              '<span style="font-size: 10px; color: #9ca3af;">🛍️ Рекорд. шоппинг</span>' +
-              (recordDayLabel ? '<span style="font-size: 9px; background: #dcfce7; color: #16a34a; padding: 2px 6px; border-radius: 6px; font-weight: 600;">' + recordDayLabel + '</span>' : '') +
+          '<div class="osp-record-card green">' +
+            '<div class="osp-record-row">' +
+              '<span class="osp-record-label">🛍️ Рекорд. шоппинг</span>' +
+              (recordDayLabel ? '<span class="osp-record-chip green">' + recordDayLabel + '</span>' : '') +
             '</div>' +
-            '<div style="font-size: 14px; font-weight: 700; color: #16a34a; margin-bottom: 2px;">' + recordDayOrders + ' заказов</div>' +
-            '<div style="font-size: 10px; color: #6b7280;">' + recordDayItems + ' товаров</div>' +
+            '<div class="osp-record-value green">' + plural(recordDayOrders, 'заказ', 'заказа', 'заказов') + '</div>' +
+            '<div class="osp-record-sub">' + plural(recordDayItems, 'товар', 'товара', 'товаров') + '</div>' +
           '</div>' +
         '</div>' +
 
-        '<div style="font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 12px;">📅 По годам</div>' +
-        '<div style="max-height: 250px; overflow-y: auto; padding-right: 4px;">' + yearsHtml + '</div>' +
-        '<button class="osp-btn" id="stats-recalc" style="margin-top: 12px;"><span>🔄</span><span>Пересчитать</span></button>' +
-        '<button class="osp-btn" id="back-to-main" style="margin-top: 8px;"><span>←</span><span>Назад</span></button>' +
+        '<h3 class="osp-years-heading">📅 По годам</h3>' +
+        '<div class="osp-years-list">' + yearsHtml + '</div>' +
+        '<button class="osp-btn" id="stats-recalc"><span>🔄</span><span>Пересчитать</span></button>' +
+        '<button class="osp-btn ghost" id="back-to-main"><span>←</span><span>Назад</span></button>' +
       '</div>';
 
     document.getElementById('back-to-main').addEventListener('click', loadData);

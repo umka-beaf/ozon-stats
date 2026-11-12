@@ -2,7 +2,7 @@
 
 [🇷🇺 Русский](README.md) · 🇬🇧 English
 
-![version](https://img.shields.io/badge/version-1.0.1-blue)
+![version](https://img.shields.io/badge/version-1.1.0-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)
 ![Brave](https://img.shields.io/badge/Brave-supported-FB542B?logo=brave&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -28,7 +28,12 @@ breakdown, chart, priority sorting of active orders) this version adds:
 - 🔗 click an order card to open it on Ozon;
 - 🔢 badge on the extension icon with the active order count;
 - 🔔 notifications on order status changes;
-- ⚡ cached data for an instant panel render on page load.
+- ⚡ cached data for an instant panel render on page load;
+- 🧹 a layer over the Ozon site: hide ad blocks, struck-through prices and discount
+  badges;
+- 🌙 dark theme for the site and the panel, price per kg/l, long card titles clamped
+  to two lines;
+- 🖥️ wide mode for monitors wider than 1600 px — content spans the full width.
 
 All rights to the original idea and name belong to the original author. If you have
 concerns about similarity or attribution, please open an issue.

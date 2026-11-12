@@ -35,16 +35,19 @@
   }
   window.__ozonStats.currentInjectionOk = true;
 
-  // Восстанавливаем тёмную тему из localStorage
+  // Запоминаем сохранённую тему — класс повесим на панель после её создания,
+  // страницу Ozon не инвертируем.
+  let savedDark = false;
   try {
-    if (localStorage.getItem('ozon_dark_theme') === '1') {
-      document.documentElement.classList.add('darkreader');
-    }
+    savedDark = localStorage.getItem('ozon_dark_theme') === '1';
   } catch(e) {}
 
   // Создаём панель
   const panel = document.createElement('div');
   panel.id = 'ozon-stats-panel';
+  panel.setAttribute('role', 'region');
+  panel.setAttribute('aria-label', 'Ozon Stats — статистика заказов');
+  if (savedDark) panel.classList.add('osp-dark');
 
   // Проверяем сохранённое состояние
   const savedState = localStorage.getItem('ozon-stats-collapsed');
@@ -68,7 +71,10 @@
   // Создаём кнопку-переключатель ОТДЕЛЬНО от панели (fixed позиция)
   const toggleBtn = document.createElement('button');
   toggleBtn.id = 'ozon-stats-toggle';
+  toggleBtn.type = 'button';
   toggleBtn.title = 'Свернуть/Развернуть Ozon Stats';
+  toggleBtn.setAttribute('aria-controls', 'ozon-stats-panel');
+  toggleBtn.setAttribute('aria-expanded', String(!panel.classList.contains('collapsed')));
   toggleBtn.innerHTML = `
     <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="9 18 15 12 9 6"></polyline>
@@ -83,7 +89,9 @@
 
   // Обновляем позицию кнопки
   function updateTogglePosition() {
-    if (panel.classList.contains('collapsed')) {
+    const collapsed = panel.classList.contains('collapsed');
+    toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+    if (collapsed) {
       toggleBtn.style.right = '0px';
       toggleBtn.querySelector('.toggle-icon').style.transform = 'rotate(180deg)';
     } else {

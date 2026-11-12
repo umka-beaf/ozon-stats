@@ -1,18 +1,31 @@
 /* ==============================
    Ozon Stats — content/styles.css
-   Стили боковой панели заказов, кнопки-переключателя и нашей самодельной
-   тёмной темы (класс html.darkreader, включается тумблером в панели).
+   Стили боковой панели заказов, кнопки-переключателя и тёмной темы.
+   Тёмная тема — класс osp-dark на самой панели (см. блок ниже), страница
+   Ozon не инвертируется.
    Подключается декларативно через manifest.json → content_scripts[0].css,
    поэтому здесь обычный CSS, без JS-обёртки.
    ============================== */
 
     #ozon-stats-panel {
+      /* Светлые токены; тёмная тема переопределяет их ниже (.osp-dark). */
+      --osp-bg-1: #f8f9fb;
+      --osp-bg-2: #eef1f6;
+      --osp-surface: #ffffff;
+      --osp-text: #1a1a2e;
+      --osp-text-soft: #5b6270;
+      --osp-muted: #6b7280;
+      --osp-track: #e5e7eb;
+      --osp-chip-bg: #f3f4f6;
+      --osp-accent: #005BFF;
+      --osp-green: #047857;
+      --osp-red: #dc2626;
       position: fixed;
       top: 0;
       right: 0;
       width: 340px;
       height: 100vh;
-      background: linear-gradient(180deg, #f8f9fb 0%, #eef1f6 100%);
+      background: linear-gradient(180deg, var(--osp-bg-1) 0%, var(--osp-bg-2) 100%);
       box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
       z-index: 2147483647;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -98,7 +111,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: white;
+      background: var(--osp-surface);
       border-radius: 12px;
       padding: 10px 14px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -106,7 +119,7 @@
       user-select: none;
       font-size: 13px;
       font-weight: 600;
-      color: #1a1a2e;
+      color: var(--osp-text);
       list-style: none;
     }
 
@@ -115,7 +128,7 @@
     }
 
     .osp-summary-arrow {
-      color: #9ca3af;
+      color: var(--osp-muted);
       transition: transform 0.2s ease;
     }
 
@@ -128,7 +141,7 @@
     }
 
     .osp-profile {
-      background: white;
+      background: var(--osp-surface);
       border-radius: 14px;
       padding: 10px 12px;
       margin-bottom: 10px;
@@ -170,54 +183,221 @@
     .osp-name {
       font-size: 14px;
       font-weight: 600;
-      color: #1a1a2e;
+      color: var(--osp-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .osp-email {
-      font-size: 11px;
-      color: #9ca3af;
+      font-size: 12px;
+      color: var(--osp-muted);
       margin-top: 1px;
     }
 
     .osp-cards {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
 
-    .osp-card-toggle {
+    .osp-theme-row {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--osp-surface);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--osp-text);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .osp-theme-row:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Ozon Clean — настройки слоя поверх страниц Ozon */
+    .osp-clean-settings {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--osp-surface);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .osp-clean-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--osp-muted);
+      margin-bottom: 4px;
+    }
+
+    .osp-clean-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 0;
+      font: inherit;
+      font-size: 13px;
+      color: var(--osp-text);
+      border: 0;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    /* Наборные флаги Ozon Clean: нативная галочка + подпись */
+    .osp-clean-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 7px 0;
+      font-size: 13px;
+      color: var(--osp-text);
+      cursor: pointer;
+    }
+
+    .osp-clean-check input {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      margin: 1px 0 0;
+      accent-color: var(--osp-accent);
+      cursor: pointer;
+    }
+
+    .osp-clean-check span {
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      gap: 1px;
+    }
+
+    .osp-clean-check small {
+      font-size: 11px;
+      color: var(--osp-muted);
+    }
+
+    .osp-clean-check input:focus-visible {
+      outline: 2px solid var(--osp-accent);
+      outline-offset: 2px;
+    }
+
+    /* Сегментированный переключатель: нативные radio, скрытые за подписями.
+       Работает с клавиатуры и со скринридером без JS; выбранный сегмент
+       заливается акцентом, а не рисуется «бегунком». */
+    .osp-clean-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 7px 0;
+      font-size: 13px;
+      color: var(--osp-text);
+    }
+
+    .osp-clean-field-label {
+      font-size: 13px;
+    }
+
+    .osp-seg {
+      display: flex;
+      gap: 2px;
+      padding: 3px;
+      background: var(--osp-chip-bg);
+      border: 1px solid var(--osp-track);
+      border-radius: 10px;
+    }
+
+    .osp-seg-item {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .osp-seg-item input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .osp-seg-item span {
+      display: block;
+      padding: 5px 0;
+      border-radius: 7px;
+      font-size: 12px;
+      line-height: 1;
+      text-align: center;
+      color: var(--osp-muted);
+      pointer-events: none;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .osp-seg-item input:checked + span {
+      background: var(--osp-accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .osp-seg-item input:focus-visible + span {
+      outline: 2px solid var(--osp-accent);
+      outline-offset: 1px;
+    }
+
+    #ozon-stats-panel.osp-dark .osp-seg-item input:checked + span {
+      color: #101214;
+    }
+
+    .osp-clean-row:focus-visible {
+      outline: 2px solid var(--osp-accent);
+      outline-offset: 2px;
     }
 
     .osp-card {
-      background: white;
+      background: var(--osp-surface);
       border-radius: 14px;
       padding: 12px;
+      min-height: 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     }
 
     .osp-card-label {
       font-size: 12px;
-      color: #9ca3af;
+      color: var(--osp-muted);
       margin-bottom: 6px;
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .osp-card-value {
       font-size: 18px;
       font-weight: 700;
-      color: #1a1a2e;
+      color: var(--osp-text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      letter-spacing: -0.2px;
     }
 
-    .osp-card-value.blue { color: #005BFF; }
-    .osp-card-value.green { color: #10b981; }
+    .osp-card-value.blue { color: var(--osp-accent); }
+    .osp-card-value.green { color: var(--osp-green); }
 
     .osp-section-title {
       display: flex;
@@ -226,13 +406,12 @@
       margin-bottom: 14px;
     }
 
-    .osp-section-title span {
+    .osp-section-heading {
+      margin: 0;
       font-size: 15px;
       font-weight: 600;
-      color: #1a1a2e;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      line-height: 1.3;
+      color: var(--osp-text);
     }
 
     .osp-section-meta {
@@ -244,7 +423,7 @@
     .osp-section-title .osp-sum {
       font-size: 13px;
       font-weight: 600;
-      color: #005BFF;
+      color: var(--osp-accent);
     }
 
     .osp-badge {
@@ -259,7 +438,7 @@
 
     .osp-orders-breakdown {
       font-size: 12px;
-      color: #8b8f9c;
+      color: var(--osp-text-soft);
       margin: -8px 0 14px;
     }
 
@@ -286,13 +465,13 @@
     .osp-order-group-header-text {
       font-size: 12px;
       font-weight: 600;
-      color: #8b8f9c;
+      color: var(--osp-text-soft);
     }
 
     .osp-order-group-pickup {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 400;
-      color: #9ca3af;
+      color: var(--osp-text-soft);
       margin-top: 2px;
     }
 
@@ -304,7 +483,9 @@
     }
 
     .osp-order {
-      background: white;
+      background: var(--osp-surface);
+      color: inherit;
+      text-decoration: none;
       border-radius: 14px;
       padding: 14px;
       display: flex;
@@ -349,7 +530,7 @@
     .osp-order-title {
       font-size: 14px;
       font-weight: 500;
-      color: #1a1a2e;
+      color: var(--osp-text);
       line-height: 1.35;
       margin-bottom: 6px;
     }
@@ -369,7 +550,7 @@
 
     .osp-order-dates {
       font-size: 12px;
-      color: #8b8f9c;
+      color: var(--osp-text-soft);
       margin-top: 6px;
     }
 
@@ -402,18 +583,18 @@
     .osp-order-price {
       font-size: 15px;
       font-weight: 700;
-      color: #005BFF;
+      color: var(--osp-accent);
       white-space: nowrap;
     }
 
     .osp-copy-btn {
       border: none;
-      background: #f3f4f6;
-      color: #6b7280;
+      background: var(--osp-chip-bg);
+      color: var(--osp-text-soft);
       border-radius: 8px;
-      width: 26px;
-      height: 26px;
-      font-size: 13px;
+      width: 32px;
+      height: 32px;
+      font-size: 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -429,7 +610,23 @@
     .osp-loading {
       text-align: center;
       padding: 40px 20px;
-      color: #9ca3af;
+      color: var(--osp-muted);
+    }
+
+    .osp-error-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .osp-error-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--osp-text);
+    }
+
+    .osp-error-text {
+      font-size: 12px;
+      margin-bottom: 16px;
     }
 
     .osp-spinner {
@@ -472,28 +669,43 @@
     }
 
     .osp-btn.green {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+      box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
     }
 
     .osp-btn.green:hover {
-      background: linear-gradient(135deg, #059669 0%, #047857 100%);
-      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+      background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+      box-shadow: 0 6px 16px rgba(4, 120, 87, 0.35);
     }
 
     .osp-btn.red {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
     }
 
     .osp-btn.red:hover {
-      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    }
+
+    .osp-btn.ghost {
+      background: var(--osp-surface);
+      color: var(--osp-text);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .osp-btn.ghost:hover {
+      background: var(--osp-chip-bg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .osp-btn + .osp-btn {
+      margin-top: 8px;
     }
 
     .osp-empty {
       text-align: center;
       padding: 30px 20px;
-      color: #9ca3af;
+      color: var(--osp-muted);
     }
 
     .osp-empty-icon {
@@ -509,53 +721,244 @@
       right: 360px !important;
     }
 
-    /* ===== Dark Reader-style dark theme ===== */
-    html.darkreader {
-      filter: invert(100%) hue-rotate(180deg) contrast(85%) brightness(108%) !important;
-      background: #1a1c1e !important;
-      --textPositive: rgb(36, 168, 80) !important;
+    /* ===== Экран статистики ===== */
+    .osp-stats { padding: 0; }
+    .osp-mb { margin-bottom: 12px; }
+
+    .osp-stats-header { text-align: center; margin-bottom: 20px; }
+    .osp-stats-icon { font-size: 32px; margin-bottom: 8px; }
+    .osp-stats-title {
+      margin: 0 0 2px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--osp-text);
+    }
+    .osp-stats-sub { font-size: 12px; color: var(--osp-muted); }
+    .osp-stats-updated { font-size: 12px; color: var(--osp-muted); margin-top: 4px; }
+    .osp-spinner-center { margin: 0 auto 12px; }
+
+    .osp-stats-grid { display: grid; gap: 10px; }
+    .osp-stats-grid-2 { grid-template-columns: 1fr 1fr; }
+    .osp-stats-grid-3 { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    .osp-stat-tile {
+      background: var(--osp-surface);
+      border-radius: 14px;
+      padding: 14px;
+      min-width: 0;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+    .osp-stat-tile.center { text-align: center; padding: 12px 10px; }
+    .osp-stat-label { font-size: 12px; color: var(--osp-muted); margin-bottom: 4px; }
+    .osp-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .osp-stat-tile.center .osp-stat-value { font-size: 16px; }
+    .osp-stat-value.blue { color: var(--osp-accent); }
+    .osp-stat-value.green { color: var(--osp-green); }
+    .osp-stat-value.violet { color: #6d28d9; }
+    .osp-stat-value.red { color: var(--osp-red); }
+    .osp-stat-value.amber { color: #b45309; }
+
+    .osp-cancel-card {
+      background: linear-gradient(135deg, #fef2f2, #fff1f2);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .osp-cancel-label { font-size: 12px; color: var(--osp-muted); margin-bottom: 2px; }
+    .osp-cancel-value { font-size: 15px; font-weight: 700; color: #b91c1c; }
+    .osp-cancel-pill {
+      background: #fee2e2;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #b91c1c;
+      white-space: nowrap;
     }
 
-    html.darkreader img,
-    html.darkreader video,
-    html.darkreader canvas,
-    html.darkreader picture,
-    html.darkreader svg image,
-    html.darkreader iframe {
-      filter: invert(100%) hue-rotate(180deg) !important;
+    .osp-record-card {
+      border-radius: 12px;
+      padding: 12px;
+      min-width: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .osp-record-card.blue { background: linear-gradient(135deg, #eff6ff, #eef2ff); }
+    .osp-record-card.green { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); }
+    .osp-record-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .osp-record-label { font-size: 12px; color: var(--osp-muted); }
+    .osp-record-chip {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .osp-record-chip.blue { background: #dbeafe; color: #1d4ed8; }
+    .osp-record-chip.green { background: #dcfce7; color: #15803d; }
+    .osp-record-value {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .osp-record-value.blue { color: #1d4ed8; }
+    .osp-record-value.green { color: #15803d; }
+    .osp-record-sub { font-size: 12px; color: var(--osp-muted); }
+
+    .osp-years-heading {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--osp-text);
+    }
+    .osp-years-list { max-height: 250px; overflow-y: auto; padding-right: 4px; }
+    .osp-years-list::-webkit-scrollbar { width: 6px; }
+    .osp-years-list::-webkit-scrollbar-thumb {
+      background: #c1c8d4;
+      border-radius: 3px;
+    }
+    .osp-year-card {
+      background: var(--osp-surface);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .osp-year-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .osp-year-label { font-size: 15px; font-weight: 600; color: var(--osp-text); }
+    .osp-year-orders { font-size: 12px; color: var(--osp-muted); }
+    .osp-year-bar {
+      background: var(--osp-track);
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .osp-year-fill {
+      background: linear-gradient(90deg, #005BFF, #0046cc);
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s ease;
+    }
+    .osp-year-sum { font-size: 14px; font-weight: 700; color: var(--osp-accent); }
+
+    .osp-progress-card {
+      background: var(--osp-surface);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+    .osp-progress-text { font-size: 13px; color: var(--osp-text-soft); }
+
+    /* ===== Тёмная тема — только панель, страницу Ozon не инвертируем ===== */
+    #ozon-stats-panel.osp-dark {
+      --osp-bg-1: #15171a;
+      --osp-bg-2: #101214;
+      --osp-surface: #1e2126;
+      --osp-text: #e8eaed;
+      --osp-text-soft: #b0b6c0;
+      --osp-muted: #9aa1ab;
+      --osp-track: #343a42;
+      --osp-chip-bg: #2a2e35;
+      --osp-accent: #60a5fa;
+      --osp-green: #4ade80;
+      --osp-red: #f87171;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
     }
 
-    /* Не инвертировать медиа повторно если внутри другого ре-инвертированного элемента */
-    html.darkreader picture img,
-    html.darkreader picture video,
-    html.darkreader picture canvas,
-    html.darkreader iframe img,
-    html.darkreader iframe video {
-      filter: none !important;
+    #ozon-stats-panel.osp-dark .osp-profile-summary,
+    #ozon-stats-panel.osp-dark .osp-profile,
+    #ozon-stats-panel.osp-dark .osp-card,
+    #ozon-stats-panel.osp-dark .osp-theme-row,
+    #ozon-stats-panel.osp-dark .osp-order,
+    #ozon-stats-panel.osp-dark .osp-stat-tile,
+    #ozon-stats-panel.osp-dark .osp-progress-card,
+    #ozon-stats-panel.osp-dark .osp-year-card {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
     }
 
-    /* Белый фон за картинками товаров (чтобы не было видно разницу в размерах) */
-    html.darkreader img {
-      background-color: white !important;
-    }
-    /* Исключаем логотип, иконки в шапке и мелкие картинки */
-    html.darkreader header img,
-    html.darkreader [data-widget="header"] img,
-    html.darkreader [data-widget="headerIcon"] img,
-    html.darkreader [data-widget="topBar"] img,
-    html.darkreader [data-widget="navigation"] img,
-    html.darkreader [data-widget="navBar"] img,
-    html.darkreader nav img,
-    html.darkreader #ozon-stats-panel img,
-    html.darkreader img[width="1"],
-    html.darkreader img[height="1"] {
-      background-color: transparent !important;
+    #ozon-stats-panel.osp-dark .osp-order:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
     }
 
-    html.darkreader .osp-btn,
-    html.darkreader #ozon-stats-toggle,
-    html.darkreader .osp-badge {
-      filter: invert(100%) hue-rotate(180deg) !important;
+    #ozon-stats-panel.osp-dark .osp-order-status.ready { background: #14301f; color: #6ee7a0; }
+    #ozon-stats-panel.osp-dark .osp-order-status.transit { background: #16263f; color: #93c5fd; }
+    #ozon-stats-panel.osp-dark .osp-order-status.pending { background: #33270e; color: #fcd34d; }
+    #ozon-stats-panel.osp-dark .osp-order-status.service { background: #2a1b3d; color: #c4b5fd; }
+
+    #ozon-stats-panel.osp-dark .osp-order-date-row.osp-date-soon { color: #fbbf24; }
+    #ozon-stats-panel.osp-dark .osp-order-date-row.osp-date-urgent { color: #f87171; }
+
+    #ozon-stats-panel.osp-dark .osp-badge { box-shadow: none; }
+
+    #ozon-stats-panel.osp-dark .osp-stat-value.violet { color: #c4b5fd; }
+    #ozon-stats-panel.osp-dark .osp-stat-value.amber { color: #fbbf24; }
+
+    #ozon-stats-panel.osp-dark .osp-cancel-card { background: #2a1b1d; }
+    #ozon-stats-panel.osp-dark .osp-cancel-value { color: #fca5a5; }
+    #ozon-stats-panel.osp-dark .osp-cancel-pill { background: #3a2022; color: #fca5a5; }
+
+    #ozon-stats-panel.osp-dark .osp-record-card.blue { background: #16263f; }
+    #ozon-stats-panel.osp-dark .osp-record-card.green { background: #14291f; }
+    #ozon-stats-panel.osp-dark .osp-record-chip.blue { background: #1e3a5f; color: #93c5fd; }
+    #ozon-stats-panel.osp-dark .osp-record-chip.green { background: #14301f; color: #6ee7a0; }
+    #ozon-stats-panel.osp-dark .osp-record-value.blue { color: #93c5fd; }
+    #ozon-stats-panel.osp-dark .osp-record-value.green { color: #6ee7a0; }
+
+    #ozon-stats-panel.osp-dark .osp-years-list::-webkit-scrollbar-thumb { background: #4a5058; }
+
+    /* Видимый фокус для клавиатуры */
+    #ozon-stats-panel :focus-visible {
+      outline: 3px solid #005BFF;
+      outline-offset: 2px;
+    }
+    #ozon-stats-panel.osp-dark :focus-visible {
+      outline-color: #60a5fa;
+    }
+    #ozon-stats-toggle:focus-visible {
+      outline: 3px solid #ffffff;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.55);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #ozon-stats-panel,
+      #ozon-stats-toggle,
+      .osp-spinner,
+      .osp-order,
+      .osp-btn,
+      .osp-dark-switch,
+      .osp-dark-switch::after,
+      .osp-year-fill {
+        transition: none !important;
+        animation: none !important;
+      }
     }
 
     .osp-dark-switch {
