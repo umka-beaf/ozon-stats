@@ -29,6 +29,60 @@
     return '📍';
   }
 
+  // Ссылка на карточку товара. В разметке активных заказов ссылок на товар
+  // нет — все они ведут в детали заказа. SKU Ozon прячет в
+  // testInfo.automatizationId вида "postingID-map[50585728097:{}]-itemID-4683118229",
+  // адрес /product/<sku>/ открывает нужный товар.
+  function skuOf(prod) {
+    if (prod.sku) return String(prod.sku);
+    if (prod.productId) return String(prod.productId);
+    const ids = [];
+    if (prod.captionCommon && prod.captionCommon.testInfo) ids.push(prod.captionCommon.testInfo.automatizationId);
+    if (prod.common && prod.common.testInfo) ids.push(prod.common.testInfo.automatizationId);
+    if (prod.image && prod.image.productMedia && prod.image.productMedia.common &&
+        prod.image.productMedia.common.testInfo) {
+      ids.push(prod.image.productMedia.common.testInfo.automatizationId);
+    }
+    for (let i = 0; i < ids.length; i++) {
+      const m = String(ids[i] || '').match(/itemID-(\d+)/);
+      if (m) return m[1];
+    }
+    // Запасной путь: отметка может лежать глубже, чем известные ветки.
+    const m = JSON.stringify(prod).match(/itemID-(\d+)/);
+    return m ? m[1] : '';
+  }
+
+  function productUrlOf(prod) {
+    if (!prod) return '';
+    const candidates = [
+      prod.action && prod.action.link,
+      prod.common && prod.common.action && prod.common.action.link,
+      prod.image && prod.image.productMedia && prod.image.productMedia.common &&
+          prod.image.productMedia.common.action && prod.image.productMedia.common.action.link,
+      prod.link,
+      prod.href,
+      prod.url
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      const link = candidates[i];
+      if (typeof link === 'string' && link.indexOf('/product/') >= 0) {
+        return link.charAt(0) === '/' ? 'https://www.ozon.ru' + link : link;
+      }
+    }
+    const sku = skuOf(prod);
+    return sku ? 'https://www.ozon.ru/product/' + encodeURIComponent(sku) + '/' : '';
+  }
+
+  // Экранирование для значения атрибута: названия товаров приходят от Ozon
+  // как есть и могут содержать кавычки и угловые скобки.
+  function escapeAttr(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   // Склонение числительных: 1 заказ, 2 заказа, 5 заказов
   function plural(n, one, few, many) {
     const n10 = n % 10;
@@ -446,7 +500,8 @@
                   title: prodTitle || 'Товар',
                   image: prodImage,
                   price: prodPrice,
-                  planDate: prodCaption
+                  planDate: prodCaption,
+                  url: productUrlOf(prod)
                 });
               }
 
@@ -577,7 +632,7 @@
                   itemPrice = parseInt(String(item.finalPrice).replace(/\D/g, '')) || 0;
                 }
 
-                updatedProducts.push({ title: itemTitle || 'Товар', image: itemImage, price: itemPrice });
+                updatedProducts.push({ title: itemTitle || 'Товар', image: itemImage, price: itemPrice, url: productUrlOf(item) });
               }
             }
 
@@ -592,6 +647,7 @@
                     if (updatedProducts[up].title && updatedProducts[up].title !== 'Товар') {
                       origProd.title = updatedProducts[up].title;
                     }
+                    if (updatedProducts[up].url) origProd.url = updatedProducts[up].url;
                     updatedProducts[up]._used = true;
                     break;
                   }
@@ -628,6 +684,7 @@
               orderDate: orderItem.orderDate,
               planDate: prods[sp].planDate || orderItem.planDate,
               pickupPoint: orderItem.pickupPoint,
+              url: prods[sp].url || '',
             });
           }
         } else {
@@ -686,7 +743,7 @@
             <div class="osp-profile">
               <div class="osp-profile-row">
                 <div class="osp-avatar">
-                  ${avatar ? '<img src="' + avatar + '" alt="">' : '👤'}
+                  ${avatar ? '<img src="' + avatar + '" alt="" loading="lazy" decoding="async">' : '👤'}
                 </div>
                 <div class="osp-user-info">
                   <div class="osp-name">${name}</div>
@@ -714,7 +771,7 @@
             ${(function() {
               const s = window.__ozonStats.clean
                 ? window.__ozonStats.clean.getSettings()
-                : { hideAds: false, hideOldPrice: false, hideDiscount: false, unitExact: false, clampTitles: false, wideContent: false, siteTheme: 'auto' };
+                : { hideAds: false, hideOldPrice: false, hideDiscount: false, unitExact: false, clampTitles: false, wideContent: false, cartPrices: false, accentOn: false, accentColor: '#ffa31a', siteTheme: 'auto' };
               function check(key, label, hint) {
                 return '<label class="osp-clean-check">' +
                   '<input type="checkbox" data-clean-check="' + key + '"' + (s[key] ? ' checked' : '') + '>' +
@@ -744,6 +801,13 @@
                 check('unitExact', 'Цена за кг/л — точно', 'запрос карточки, кеш 7 дней') +
                 check('clampTitles', 'Вписать название в карточку', 'четыре строки, шрифт подгоняется под текст') +
                 check('wideContent', 'Широкий режим', 'мониторы шире 1600 px: контент на всю ширину') +
+                check('cartPrices', 'Помнить цены в корзине', 'разница с прошлым заходом, хранится локально') +
+                check('accentOn', 'Свой акцентный цвет', 'кнопки, ссылки, иконки и весь розовый Ozon') +
+                '<div class="osp-clean-field osp-clean-field-inline">' +
+                  '<label class="osp-clean-field-label" for="osp-clean-accent">Цвет акцента</label>' +
+                  '<input type="color" class="osp-clean-color" id="osp-clean-accent" data-clean-color="accentColor"' +
+                    ' value="' + (s.accentColor || '#ffa31a') + '">' +
+                '</div>' +
                 seg('siteTheme', 'Тема сайта', [
                   ['auto', 'авто'], ['light', 'светлая'], ['dark', 'тёмная']
                 ]) +
@@ -780,13 +844,18 @@
               // товара, поэтому показываем их один раз в заголовке группы.
               const pickupHtml = group.pickupPoint ?
                   '<div class="osp-order-group-pickup">' + pickupIcon(group.pickupPoint) + ' ' + group.pickupPoint + '</div>' : '';
-              const copyHtml = group.orderNumber ?
-                  '<button class="osp-copy-btn" data-copy-number="' + group.orderNumber + '" title="Скопировать номер заказа" aria-label="Скопировать номер заказа ' + group.orderNumber + '">📋</button>' : '';
+              // Переход на заказ — отдельной кнопкой в заголовке группы: сама
+              // карточка теперь ведёт на товар, а не на заказ.
+              const orderHref = group.orderNumber ?
+                  'https://www.ozon.ru/my/orderdetails/?order=' + encodeURIComponent(group.orderNumber) : '';
+              const openHtml = orderHref ?
+                  '<a class="osp-order-open" href="' + orderHref + '" target="_blank" rel="noopener"' +
+                    ' aria-label="Открыть заказ №' + escapeAttr(group.orderNumber) + ' на Ozon">Открыть заказ ↗</a>' : '';
               // Если товаров в заказе несколько — их сумма нигде больше не
               // показана, добавляем её тем же цветом/стилем, что и цена товара.
               const totalHtml = group.items.length > 1 ?
                   '<div class="osp-order-price">' + formatMoney(group.items.reduce((s, o) => s + (o.price || 0), 0)) + '</div>' : '';
-              const groupHeader = (group.orderDate || pickupHtml) ?
+              const groupHeader = (group.orderDate || pickupHtml || openHtml) ?
                   '<div class="osp-order-group-header">' +
                     '<div class="osp-order-group-header-text">' +
                       (group.orderDate ? '📅 Заказ от ' + group.orderDate : '') +
@@ -794,7 +863,7 @@
                     '</div>' +
                     '<div class="osp-order-group-header-side">' +
                       totalHtml +
-                      copyHtml +
+                      openHtml +
                     '</div>' +
                   '</div>' : '';
 
@@ -811,26 +880,40 @@
                   planDateHtml = '<div class="osp-order-dates"><div class="' + cls + '">🚚 ' + o.planDate + '</div></div>';
                 }
 
-                const orderHref = o.orderNumber ?
-                    'https://www.ozon.ru/my/orderdetails/?order=' + encodeURIComponent(o.orderNumber) : '';
-                const cardOpen = orderHref ?
-                    '<a class="osp-order" href="' + orderHref + '" target="_blank" rel="noopener">' :
-                    '<div class="osp-order">';
-                const cardClose = orderHref ? '</a>' : '</div>';
+                // Клик по карточке ведёт на товар. Если ссылку на товар Ozon не
+                // отдал, ведём на заказ — так лучше, чем неактивная карточка.
+                const itemHref = o.url ||
+                    (o.orderNumber ? 'https://www.ozon.ru/my/orderdetails/?order=' + encodeURIComponent(o.orderNumber) : '');
+                // Ссылок на карточке две (название и фото), и у обеих должно
+                // быть различимое имя: иначе скринридер объявляет их одинаково
+                // для всех товаров и выбрать нужный невозможно.
+                const linkLabel = (o.url ? 'Открыть товар: ' : 'Открыть заказ: ') + o.title;
+                const titleOpen = itemHref ?
+                    '<a class="osp-order-link" href="' + itemHref + '" target="_blank" rel="noopener"' +
+                      ' aria-label="' + escapeAttr(linkLabel) + '">' :
+                    '<span class="osp-order-link">';
+                // Фото ведёт туда же, что и название: для скринридера и обхода
+                // клавиатурой это дубль, поэтому снимок исключён из обоих, а
+                // мышью по-прежнему кликается.
+                const imgOpen = itemHref ?
+                    '<a class="osp-order-link" href="' + itemHref + '" target="_blank" rel="noopener"' +
+                      ' tabindex="-1" aria-hidden="true">' :
+                    '<span class="osp-order-link">';
+                const linkClose = itemHref ? '</a>' : '</span>';
 
-                return cardOpen +
+                return '<div class="osp-order">' +
                   '<div class="osp-order-info">' +
-                    '<div class="osp-order-title">' + o.title + '</div>' +
+                    '<div class="osp-order-title">' + titleOpen + o.title + linkClose + '</div>' +
                     '<span class="osp-order-status ' + statusClass(o.status) + '">' + o.status + '</span>' +
                     planDateHtml +
                   '</div>' +
                   '<div class="osp-order-side">' +
                     '<div class="osp-order-price">' + formatMoney(o.price) + '</div>' +
                     '<div class="osp-order-img">' +
-                      (o.image ? '<img src="' + o.image + '" alt="">' : '📦') +
+                      imgOpen + (o.image ? '<img src="' + o.image + '" alt="" loading="lazy" decoding="async">' : '📦') + linkClose +
                     '</div>' +
                   '</div>' +
-                cardClose;
+                '</div>';
               }).join('');
 
               return '<div class="osp-order-group">' + groupHeader + itemsHtml + '</div>';
@@ -857,20 +940,6 @@
             '<div>Загрузка данных...</div>' +
           '</div>';
         loadData();
-      });
-
-      // Копирование номера заказа по клику на значок (не открывая карточку)
-      document.querySelectorAll('.osp-copy-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          const num = btn.getAttribute('data-copy-number');
-          if (!num) return;
-          navigator.clipboard.writeText(num).then(function() {
-            const original = btn.textContent;
-            btn.textContent = '✅';
-            setTimeout(function() { btn.textContent = original; }, 1200);
-          });
-        });
       });
 
       // Бейдж на иконке расширения — число активных заказов (по числу карточек, а не товаров)
@@ -905,6 +974,11 @@
           radio.addEventListener('change', function() {
             if (!radio.checked) return;
             if (window.__ozonStats.clean) window.__ozonStats.clean.set(radio.getAttribute('data-clean-segment'), radio.value);
+          });
+        });
+        cleanBox.querySelectorAll('[data-clean-color]').forEach(function(inp) {
+          inp.addEventListener('input', function() {
+            if (window.__ozonStats.clean) window.__ozonStats.clean.set(inp.getAttribute('data-clean-color'), inp.value);
           });
         });
       }

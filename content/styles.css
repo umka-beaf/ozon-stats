@@ -7,6 +7,19 @@
    поэтому здесь обычный CSS, без JS-обёртки.
    ============================== */
 
+    /* Цвета действий общие для панели и кнопки-переключателя вне её, поэтому
+       живут на :root: тумблер не наследует токены панели. --osp-focus
+       переопределяется в тёмной теме панели. */
+    :root {
+      --osp-action: #005BFF;
+      --osp-action-strong: #0046cc;
+      --osp-action-deep: #003399;
+      --osp-focus: #005BFF;
+      /* На узких окнах панель ужимается, чтобы не закрывать половину сайта;
+         ниже 280 px карточки заказов становятся нечитаемыми. */
+      --osp-panel-width: max(280px, min(340px, 42vw));
+    }
+
     #ozon-stats-panel {
       /* Светлые токены; тёмная тема переопределяет их ниже (.osp-dark). */
       --osp-bg-1: #f8f9fb;
@@ -23,7 +36,7 @@
       position: fixed;
       top: 0;
       right: 0;
-      width: 340px;
+      width: var(--osp-panel-width);
       height: 100vh;
       background: linear-gradient(180deg, var(--osp-bg-1) 0%, var(--osp-bg-2) 100%);
       box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
@@ -34,18 +47,18 @@
     }
 
     #ozon-stats-panel.collapsed {
-      transform: translateX(340px);
+      transform: translateX(var(--osp-panel-width));
     }
 
     #ozon-stats-toggle {
       position: fixed;
-      right: 340px;
+      right: var(--osp-panel-width);
       top: 20%;
       transform: translateY(-50%);
       width: 36px;
       height: auto;
       padding: 10px 0;
-      background: linear-gradient(180deg, #005BFF 0%, #0046cc 100%);
+      background: linear-gradient(180deg, var(--osp-action) 0%, var(--osp-action-strong) 100%);
       border: none;
       border-radius: 14px 0 0 14px;
       cursor: pointer;
@@ -63,7 +76,7 @@
     #ozon-stats-panel.collapsed ~ #ozon-stats-toggle-fixed,
     #ozon-stats-toggle:hover {
       width: 42px;
-      background: linear-gradient(180deg, #0046cc 0%, #003399 100%);
+      background: linear-gradient(180deg, var(--osp-action-strong) 0%, var(--osp-action-deep) 100%);
       box-shadow: -6px 0 20px rgba(0, 91, 255, 0.45);
     }
 
@@ -82,6 +95,10 @@
     }
 
     #ozon-stats-content {
+      /* border-box обязателен: с content-box блок высотой 100% + padding 20px
+         выходит выше панели на 40 px, и низ срезает overflow: hidden панели —
+         до последней кнопки прокрутка не достаёт. */
+      box-sizing: border-box;
       height: 100%;
       overflow-y: auto;
       padding: 20px;
@@ -101,6 +118,9 @@
     #ozon-stats-panel.collapsed #ozon-stats-content {
       opacity: 0;
       pointer-events: none;
+      /* Свёрнутая панель не должна держать фокус в себе: visibility убирает
+         и содержимое, и его tabindex из обхода клавиатурой. */
+      visibility: hidden;
     }
 
     .osp-profile-details {
@@ -311,6 +331,39 @@
       font-size: 13px;
     }
 
+    /* Цвет акцента: нативный color input, рядом с подписью. */
+    .osp-clean-field-inline {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .osp-clean-color {
+      flex: none;
+      width: 44px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--osp-track);
+      border-radius: 7px;
+      background: none;
+      cursor: pointer;
+    }
+
+    .osp-clean-color::-webkit-color-swatch-wrapper {
+      padding: 2px;
+    }
+
+    .osp-clean-color::-webkit-color-swatch {
+      border: none;
+      border-radius: 5px;
+    }
+
+    .osp-clean-color:focus-visible {
+      outline: 2px solid var(--osp-accent);
+      outline-offset: 1px;
+    }
+
     .osp-seg {
       display: flex;
       gap: 2px;
@@ -341,7 +394,9 @@
       font-size: 12px;
       line-height: 1;
       text-align: center;
-      color: var(--osp-muted);
+      /* --osp-muted даёт 4.4:1 на подложке сегмента — ниже AA, поэтому
+         неподписанный сегмент использует более контрастный цвет. */
+      color: var(--osp-text-soft);
       pointer-events: none;
       transition: background-color 0.15s, color 0.15s;
     }
@@ -427,7 +482,7 @@
     }
 
     .osp-badge {
-      background: linear-gradient(135deg, #005BFF 0%, #0046cc 100%);
+      background: linear-gradient(135deg, var(--osp-action) 0%, var(--osp-action-strong) 100%);
       color: white;
       font-size: 12px;
       font-weight: 600;
@@ -482,25 +537,24 @@
       flex-shrink: 0;
     }
 
+    /* Карточка товара больше не ссылка целиком: кликабельны название и фото,
+       поэтому курсор-рука и подъём при наведении убраны — они обещали клик
+       по всей карточке. */
     .osp-order {
       background: var(--osp-surface);
       color: inherit;
-      text-decoration: none;
       border-radius: 14px;
       padding: 14px;
       display: flex;
       align-items: flex-start;
       gap: 14px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-      cursor: pointer;
-      transition: all 0.2s ease;
+      transition: box-shadow 0.2s ease;
       border: 1px solid transparent;
     }
 
     .osp-order:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      border-color: #005BFF;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
     }
 
     .osp-order-img {
@@ -587,24 +641,46 @@
       white-space: nowrap;
     }
 
-    .osp-copy-btn {
-      border: none;
+    /* Кнопка перехода на заказ в заголовке группы: карточка товара теперь
+       ведёт на товар, а заказ открывается отсюда. */
+    .osp-order-open {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 8px;
       background: var(--osp-chip-bg);
       color: var(--osp-text-soft);
-      border-radius: 8px;
-      width: 32px;
-      height: 32px;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
       flex-shrink: 0;
-      transition: background 0.15s ease;
+      transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .osp-copy-btn:hover {
+    .osp-order-open:hover {
       background: #e5e7eb;
+      color: var(--osp-text);
+    }
+
+    #ozon-stats-panel.osp-dark .osp-order-open:hover {
+      background: #343941;
+    }
+
+    /* Ссылки внутри карточки товара: название и фото. */
+    .osp-order-link {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .osp-order-title .osp-order-link:hover {
+      text-decoration: underline;
+    }
+
+    .osp-order-img .osp-order-link {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
 
     .osp-loading {
@@ -633,7 +709,7 @@
       width: 36px;
       height: 36px;
       border: 3px solid #e5e7eb;
-      border-top-color: #005BFF;
+      border-top-color: var(--osp-action);
       border-radius: 50%;
       animation: osp-spin 0.8s linear infinite;
       margin: 0 auto 14px;
@@ -644,7 +720,7 @@
     }
 
     .osp-btn {
-      background: linear-gradient(135deg, #005BFF 0%, #0046cc 100%);
+      background: linear-gradient(135deg, var(--osp-action) 0%, var(--osp-action-strong) 100%);
       color: white;
       border: none;
       border-radius: 10px;
@@ -663,7 +739,7 @@
     }
 
     .osp-btn:hover {
-      background: linear-gradient(135deg, #0046cc 0%, #003399 100%);
+      background: linear-gradient(135deg, var(--osp-action-strong) 0%, var(--osp-action-deep) 100%);
       transform: translateY(-1px);
       box-shadow: 0 6px 16px rgba(0, 91, 255, 0.35);
     }
@@ -860,7 +936,7 @@
       margin-bottom: 6px;
     }
     .osp-year-fill {
-      background: linear-gradient(90deg, #005BFF, #0046cc);
+      background: linear-gradient(90deg, var(--osp-action), var(--osp-action-strong));
       height: 100%;
       border-radius: 6px;
       transition: width 0.6s ease;
@@ -886,6 +962,7 @@
       --osp-track: #343a42;
       --osp-chip-bg: #2a2e35;
       --osp-accent: #60a5fa;
+      --osp-focus: #60a5fa;
       --osp-green: #4ade80;
       --osp-red: #f87171;
       box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
@@ -935,11 +1012,16 @@
 
     /* Видимый фокус для клавиатуры */
     #ozon-stats-panel :focus-visible {
-      outline: 3px solid #005BFF;
+      outline: 3px solid var(--osp-focus);
       outline-offset: 2px;
     }
+    /* Прокручиваемая область занимает всю панель, а у панели overflow: hidden:
+       обводка с положительным смещением целиком срезается. Рисуем её внутрь. */
+    #ozon-stats-content:focus-visible {
+      outline-offset: -3px;
+    }
     #ozon-stats-panel.osp-dark :focus-visible {
-      outline-color: #60a5fa;
+      outline-color: var(--osp-focus);
     }
     #ozon-stats-toggle:focus-visible {
       outline: 3px solid #ffffff;
@@ -952,6 +1034,7 @@
       #ozon-stats-toggle,
       .osp-spinner,
       .osp-order,
+      .osp-order-open,
       .osp-btn,
       .osp-dark-switch,
       .osp-dark-switch::after,
@@ -985,7 +1068,7 @@
     }
 
     .osp-dark-switch.active {
-      background: #005BFF;
+      background: var(--osp-action);
     }
 
     .osp-dark-switch.active::after {

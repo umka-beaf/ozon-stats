@@ -2,7 +2,7 @@
 
 [🇷🇺 Русский](README.md) · 🇬🇧 English
 
-![version](https://img.shields.io/badge/version-1.1.0-blue)
+![version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)
 ![Brave](https://img.shields.io/badge/Brave-supported-FB542B?logo=brave&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -24,8 +24,9 @@ from-scratch implementation.
 On top of the base feature set (spend total, order count, registration date, per-year
 breakdown, chart, priority sorting of active orders) this version adds:
 - 📸 photos and statuses of active orders, delivery date;
-- 📍 pickup-point/locker address, click-to-copy order number;
-- 🔗 click an order card to open it on Ozon;
+- 📍 pickup-point/locker address;
+- 🔗 click a product title or photo to open the product on Ozon;
+- 🧾 an "Open order" button in the order header to open the order on Ozon;
 - 🔢 badge on the extension icon with the active order count;
 - 🔔 notifications on order status changes;
 - ⚡ cached data for an instant panel render on page load;
@@ -33,6 +34,9 @@ breakdown, chart, priority sorting of active orders) this version adds:
   badges;
 - 🌙 dark theme for the site and the panel, price per kg/l, long card titles clamped
   to two lines;
+- 💰 cart price memory: each item shows how its price changed since your last visit;
+- 🎨 a custom accent color: Ozon buttons, links, icons and its entire brand pink
+  (prices, promo labels, discounts) in the color you pick (`#ffa31a` by default);
 - 🖥️ wide mode for monitors wider than 1600 px — content spans the full width.
 
 All rights to the original idea and name belong to the original author. If you have

@@ -56,7 +56,7 @@
   }
 
   panel.innerHTML = `
-    <div id="ozon-stats-content">
+    <div id="ozon-stats-content" tabindex="0" role="region" aria-label="Содержимое панели статистики">
       <div id="osp-body">
         <div class="osp-loading">
           <div class="osp-spinner"></div>
@@ -87,6 +87,13 @@
   window.__ozonStats.panel = panel;
   window.__ozonStats.toggleBtn = toggleBtn;
 
+  // Ширина панели задана формулой в CSS (ужимается на узких окнах), поэтому
+  // берём её из фактической геометрии, а не из константы.
+  function panelWidth() {
+    const w = panel.getBoundingClientRect().width;
+    return w ? Math.round(w) : 340;
+  }
+
   // Обновляем позицию кнопки
   function updateTogglePosition() {
     const collapsed = panel.classList.contains('collapsed');
@@ -95,7 +102,7 @@
       toggleBtn.style.right = '0px';
       toggleBtn.querySelector('.toggle-icon').style.transform = 'rotate(180deg)';
     } else {
-      toggleBtn.style.right = '340px';
+      toggleBtn.style.right = panelWidth() + 'px';
       toggleBtn.querySelector('.toggle-icon').style.transform = 'rotate(0deg)';
     }
   }
@@ -104,8 +111,8 @@
   // ===== Сдвиг кнопок Ozon (закрыть, прокрутка вверх) =====
   function getOzonShift() {
     // Если панель свёрнута — небольшой сдвиг (только вкладка ~40px)
-    // Если развёрнута — полная ширина панели (340px + запас)
-    return panel.classList.contains('collapsed') ? 0 : 350;
+    // Если развёрнута — ширина панели плюс запас
+    return panel.classList.contains('collapsed') ? 0 : panelWidth() + 10;
   }
 
   function shiftOzonButtons() {
@@ -232,6 +239,16 @@
 
   // Первичный сдвиг
   shiftOzonButtons();
+
+  // Окно изменило ширину — панель ужалась или растянулась, позиции пересчитываем
+  let resizeTimer = null;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      updateTogglePosition();
+      shiftOzonButtons();
+    }, 150);
+  });
 
   // Обработчик сворачивания
   toggleBtn.addEventListener('click', () => {

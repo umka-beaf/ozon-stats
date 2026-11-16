@@ -140,6 +140,16 @@ html.ozon-site-dark .ozon-clean-surface {
 html.ozon-site-dark .ozon-clean-dim {
   color: #e8eaed !important;
 }
+/* Светлый текст на мелкой светлой цветной плашке, которую не перекрашиваем:
+   возвращаем тёмный цвет, иначе он сливается с подложкой. */
+html.ozon-site-dark .ozon-clean-ink {
+  color: #14181d !important;
+}
+/* Значок с fill="currentColor" и унаследованным тёмным литеральным цветом:
+   на тёмной кнопке он пропадает. Класс ставит JS. */
+html.ozon-site-dark svg.ozon-clean-icon {
+  color: #e8eaed !important;
+}
 
 /* Карточка товара: фон плитки и её заголовок/цена. */
 html.ozon-site-dark .tile-root {
@@ -149,6 +159,154 @@ html.ozon-site-dark .tile-root picture,
 html.ozon-site-dark .tile-root img {
   background-color: transparent;
 }
+
+/* --- Акцентный цвет ---
+   Класс ozon-accent ставит site-layer.js вместе с инлайновыми --oc-a
+   (акцент), --oc-ah/--oc-aa (hover/active), --oc-text (акцентный текст на
+   светлой подложке) и --oc-ink (цвет текста на акцентной плашке). Подменяем
+   семантические токены Ozon: кнопки, ссылки, чекбоксы, выделение и иконки
+   построены на них. Брендовый розовый (--textAccent) и градиенты
+   (--grPremium*) не трогаем — это отдельная часть айдентики. */
+html.ozon-accent {
+  --ozCtrlPrimary: var(--oc-a);
+  --ozdtCtrlPrimary: var(--oc-a);
+  --ozBlue: var(--oc-a);
+  --ozAccentPrimary: var(--oc-a);
+  --ozAccentPrimaryHover: var(--oc-ah);
+  --ozHoverPrimary: var(--oc-ah);
+  --ozdtHoverPrimary: var(--oc-ah);
+  --bgActionPrimary: var(--oc-a);
+  --bgActionPrimaryInverted: var(--oc-a);
+  --bgOzonPrimary: var(--oc-a);
+  --bgActionSecondary: color-mix(in srgb, var(--oc-a) 14%, transparent);
+  --bgActiveActionPrimary: var(--oc-aa);
+  --bgActiveOzonPrimary: var(--oc-aa);
+  --graphicActionPrimary: var(--oc-a);
+  --graphicOverlapPrimary: var(--oc-a);
+  --graphicOzon: var(--oc-a);
+  --graphicOverlapPrimaryDynamic: var(--oc-a);
+  --graphicActiveActionPrimary: var(--oc-aa);
+  --graphicActiveOzon: var(--oc-aa);
+  --textAction: var(--oc-text);
+  --ozTextAction: var(--oc-text);
+  --ozdtTextAction: var(--oc-text);
+  --textOzon: var(--oc-text);
+  --textActionOnLight: var(--oc-text);
+  --graphicActionOnLight: var(--oc-text);
+  --textActiveAction: var(--oc-text);
+
+  /* Брендовый розовый Ozon (акции, Express, скидки, «Вау-цены») — в акцент.
+     Токены общие у текста цен, промо-плашек и скидок, поэтому подменяем всё
+     семейство целиком: иначе розовые островки остаются на главной и в корзине. */
+  --textAccent: var(--oc-text);
+  --textAccentInverted: var(--oc-text);
+  --textAccentOnLight: var(--oc-text);
+  --textActiveAccentInverted: var(--oc-text);
+  --textExpress: var(--oc-text);
+  --textExpressInverted: var(--oc-text);
+  --textExpressOnDark: var(--oc-text);
+  --textActiveExpressInverted: var(--oc-text);
+  --graphicAccentOnLight: var(--oc-text);
+  --ozTextSale: var(--oc-text);
+
+  --bgAccentPrimary: var(--oc-a);
+  --bgAccentPrimaryInverted: var(--oc-a);
+  --bgActiveAccentPrimaryInverted: var(--oc-aa);
+  --graphicAccentPrimary: var(--oc-a);
+  --graphicAccentPrimaryInverted: var(--oc-a);
+  --bgExpressPrimary: var(--oc-a);
+  --bgExpressPrimaryInverted: var(--oc-a);
+  --bgActiveExpressPrimaryInverted: var(--oc-aa);
+  --graphicExpress: var(--oc-a);
+  --graphicExpressInverted: var(--oc-a);
+  --graphicExpressOnDark: var(--oc-a);
+  --ozCtrlSale: var(--oc-a);
+  --ozdtCtrlSale: var(--oc-a);
+  --rose500: var(--oc-a);
+  --rose400: color-mix(in srgb, var(--oc-a) 82%, #fff);
+}
+/* На тёмной подложке затемнять акцентный текст не нужно: он сам светлый. */
+html.ozon-site-dark.ozon-accent {
+  --textAction: var(--oc-a);
+  --ozTextAction: var(--oc-a);
+  --ozdtTextAction: var(--oc-a);
+  --textOzon: var(--oc-a);
+  --textActionOnLight: var(--oc-a);
+  --graphicActionOnLight: var(--oc-a);
+  --textActiveAction: var(--oc-a);
+  --bgActionSecondary: color-mix(in srgb, var(--oc-a) 22%, transparent);
+  --textAccent: var(--oc-a);
+  --textAccentInverted: var(--oc-a);
+  --textAccentOnLight: var(--oc-a);
+  --textActiveAccentInverted: var(--oc-a);
+  --textExpress: var(--oc-a);
+  --textExpressInverted: var(--oc-a);
+  --textExpressOnDark: var(--oc-a);
+  --textActiveExpressInverted: var(--oc-a);
+  --graphicAccentOnLight: var(--oc-a);
+  --ozTextSale: var(--oc-a);
+}
+
+/* Брендовый розовый Ozon (цены, промо-подписи, «Вау-цены») остаётся в трёх
+   видах: токен, литеральный цвет и инлайновый градиент с background-clip:
+   text. Токены подменены выше, а до литералов и градиентов CSS не достаёт —
+   их размечает JS. ozon-clean-pink — текст на светлой подложке (затемнённый
+   акцент, контраст AA), ozon-clean-pink-dark — на тёмной (сам акцент). */
+html.ozon-accent .ozon-clean-pink {
+  color: var(--oc-text) !important;
+  -webkit-text-fill-color: var(--oc-text) !important;
+  background-image: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+}
+html.ozon-accent .ozon-clean-pink-dark {
+  color: var(--oc-a) !important;
+  -webkit-text-fill-color: var(--oc-a) !important;
+  background-image: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+}
+
+/* Розовая подложка плашки: прозрачность сохраняется (--oc-pink-a выставляет
+   JS), текст на ней — контрастный. У полупрозрачной (ozon-clean-pink-bg-soft)
+   в светлой теме текст всегда тёмный: --oc-ink подобран под сплошной акцент. */
+html.ozon-accent .ozon-clean-pink-bg,
+html.ozon-accent .ozon-clean-pink-bg-soft {
+  background-color: color-mix(in srgb, var(--oc-a) calc(var(--oc-pink-a, 1) * 100%), transparent) !important;
+  background-image: none !important;
+}
+html.ozon-accent .ozon-clean-pink-bg,
+html.ozon-accent .ozon-clean-pink-bg * {
+  color: var(--oc-ink) !important;
+}
+html.ozon-accent .ozon-clean-pink-bg-soft,
+html.ozon-accent .ozon-clean-pink-bg-soft * {
+  color: #14181d !important;
+}
+/* На тёмной подложке доля розового в плашке почти не видна, а тёмный текст на
+   ней теряется: подложку усиливаем и текст делаем светлым. */
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg,
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg-soft {
+  background-color: color-mix(in srgb, var(--oc-a) 22%, transparent) !important;
+}
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg,
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg *,
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg-soft,
+html.ozon-site-dark.ozon-accent .ozon-clean-pink-bg-soft * {
+  color: #f2f4f7 !important;
+}
+
+/* Акцентная плашка: цвет текста и значков подбирается по контрасту с
+   акцентом. Класс ставит JS — у наследников Ozon белый цвет часто задан
+   литералом, и переопределения токена сверху недостаточно. Поддеревья со
+   своей непрозрачной подложкой (тёмное поле ввода внутри акцентной рамки
+   поиска) это правило не красит — их отмечает проход тёмной темы, а JS
+   помечает классом ozon-clean-accent-cut. */
+html.ozon-accent .ozon-clean-accent-bg,
+html.ozon-accent .ozon-clean-accent-bg :not(.ozon-clean-accent-cut, .ozon-clean-accent-cut *) {
+  color: var(--oc-ink) !important;
+}
+
 
 /* --- Точки количества фото ---
    Неактивные точки — полупрозрачный тёмно-синий, на тёмной подложке
@@ -176,6 +334,48 @@ html .ozon-clean-unit {
 html.ozon-site-dark .ozon-clean-unit {
   background: rgba(77, 141, 255, 0.18);
   color: #9cc0ff;
+}
+/* Со своим акцентом синяя плашка цены за единицу выбивается из оформления —
+   переводим её в тон акцента. */
+html.ozon-accent .ozon-clean-unit {
+  background: color-mix(in srgb, var(--oc-a) 14%, transparent);
+  color: var(--oc-text);
+}
+html.ozon-site-dark.ozon-accent .ozon-clean-unit {
+  background: color-mix(in srgb, var(--oc-a) 20%, transparent);
+  color: var(--oc-a);
+}
+
+/* --- Память цен в корзине ---
+   Плашка с разницей к прошлому заходу в корзину. Ставится после цены
+   позиции, поэтому повторяет её выравнивание; цвет — зелёный на подешевение,
+   красный на подорожание. */
+html.ozon-cart-prices .ozon-clean-cart-delta {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(26, 127, 55, 0.1);
+  color: #1a7f37;
+  font-family: "Ozon Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: top;
+  cursor: help;
+}
+html.ozon-cart-prices .ozon-clean-cart-delta.ozon-clean-cart-up {
+  background: rgba(198, 40, 40, 0.1);
+  color: #c62828;
+}
+html.ozon-site-dark.ozon-cart-prices .ozon-clean-cart-delta {
+  background: rgba(74, 199, 118, 0.22);
+  color: #7fe0a3;
+}
+html.ozon-site-dark.ozon-cart-prices .ozon-clean-cart-delta.ozon-clean-cart-up {
+  background: rgba(255, 123, 114, 0.22);
+  color: #ff8f86;
 }
 
 /* --- Широкий режим ---

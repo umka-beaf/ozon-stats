@@ -11,7 +11,10 @@
 
   const STORAGE_KEY = 'ozon_clean_settings';
   const UNIT_CACHE_KEY = 'ozon_clean_units';
+  const CART_KEY = 'ozon_cart_prices';
   const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+  const CART_TTL = 60 * 24 * 60 * 60 * 1000;
+  const CART_LIMIT = 500;
   const DEFAULTS = {
     hideAds: false,
     hideOldPrice: false,
@@ -19,6 +22,9 @@
     unitExact: false,
     clampTitles: false,
     wideContent: false,
+    cartPrices: false,
+    accentOn: false,
+    accentColor: '#ffa31a',
     siteTheme: 'auto'
   };
 
@@ -264,16 +270,23 @@
     return darkQuery.matches ? 'dark' : 'light';
   }
 
+  // Переключение темы меняет исходный цвет текста, а оценённый контраст
+  // в кэше относится к прежней теме — сбрасываем кэш и обходим заново.
+  let themeWasDark = null;
   function applyTheme() {
     const dark = resolvedTheme() === 'dark';
+    const changed = themeWasDark !== null && themeWasDark !== dark;
+    themeWasDark = dark;
     root.classList.toggle('ozon-site-dark', dark);
     document.querySelectorAll('.ozon-clean-header').forEach(function(el) {
       el.classList.remove('ozon-clean-header');
     });
+    if (changed) resetThemePasses();
     if (dark) {
       markSurfaces();
       markHeader();
       fixContrast();
+      fixIcons();
       markDots();
     }
   }
@@ -287,9 +300,12 @@
   // классах, а не токенами. Такие места помечаем классами при обходе:
   // поверхность — если фон белый и под ней нет картинки; текст — если
   // контраст с фактическим фоном ниже 3:1.
+  // Светлой считаем не только чистую белую подложку: у Ozon есть светлые
+  // цветные панели (например, голубое объявление на оформлении заказа), и под
+  // нашими светлыми токенами текст на них тоже становится невидимым.
   function isWhite(rgb) {
-    const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    return !!m && +m[1] > 238 && +m[2] > 238 && +m[3] > 238;
+    const c = parseColor(rgb);
+    return !!c && c.a > 0.5 && luminance(c) > 0.62;
   }
 
   // Собственная панель расширения живёт по своим токенам (styles.css,
@@ -302,8 +318,43 @@
   // выдаче один обход стоит ~25 мс. Уже проверенные узлы запоминаем, чтобы
   // платить только за новые. Нулевой размер — не проверено: панель или
   // всплывашка может быть ещё не разложена и появиться позже.
-  const checkedSurfaces = new WeakSet();
-  const checkedText = new WeakSet();
+  // Ozon подключает свои таблицы стилей позже нашего скрипта, и литеральные
+  // цвета у части узлов появляются уже после первого прохода. Кэш «уже
+  // проверено» держал старую оценку, и подписи с тёмным литеральным цветом
+  // (меню профиля, верхнее меню категорий) оставались нечитаемыми. Поэтому
+  // при каждой новой таблице стилей кэш сбрасываем, а ранее осветлённый текст
+  // снимаем с пометки и оцениваем заново.
+  // Тексту и значкам, кроме того, дан срок: у уже проверенного узла цвет может
+  // смениться сменой класса (активный пункт меню), а MutationObserver классы не
+  // видит. Раз в 2 с оценка повторяется — это дешевле, чем пропущенная подпись.
+  let checkedSurfaces = new WeakSet();
+  let checkedText = new WeakMap();
+  let checkedIcons = new WeakMap();
+
+  function resetThemePasses() {
+    checkedSurfaces = new WeakSet();
+    checkedText = new WeakMap();
+    checkedIcons = new WeakMap();
+    document.querySelectorAll('.ozon-clean-dim, .ozon-clean-ink').forEach(function(el) {
+      el.classList.remove('ozon-clean-dim', 'ozon-clean-ink');
+    });
+    document.querySelectorAll('.ozon-clean-icon').forEach(function(el) {
+      el.classList.remove('ozon-clean-icon');
+    });
+    schedule();
+  }
+
+  new MutationObserver(function(records) {
+    for (const rec of records) {
+      for (const node of rec.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
+          resetThemePasses();
+          return;
+        }
+      }
+    }
+  }).observe(document.head, { childList: true, subtree: true });
 
   function markSurfaces() {
     document.querySelectorAll('body *').forEach(function(el) {
@@ -388,8 +439,16 @@
   function fixContrast() {
     document.querySelectorAll('body *').forEach(function(el) {
       if (ownUi(el)) return;
-      if (checkedText.has(el)) return;
-      if (el.children.length || el.classList.contains('ozon-clean-dim')) return;
+      const lastCheck = checkedText.get(el);
+      if (lastCheck && Date.now() - lastCheck < 2000) return;
+      // Значок + текст прямой нодой (пункты меню шапки): контейнер с картинкой
+      // внутри тоже несёт текст, и пропускать его нельзя — над ним нет другой
+      // пометки. Пропускаем только контейнеры с текстовыми потомками-элементами.
+      const hasTextChild = Array.prototype.some.call(el.children, function(c) {
+        // У SVG-узлов tagName в HTML-документе в нижнем регистре.
+        return ['SVG', 'IMG', 'PICTURE', 'CANVAS', 'VIDEO'].indexOf(c.tagName.toUpperCase()) < 0;
+      });
+      if (hasTextChild || el.classList.contains('ozon-clean-dim')) return;
       const text = (el.textContent || '').trim();
       if (text.length < 2) return;
       const rect = el.getBoundingClientRect();
@@ -397,7 +456,7 @@
       if (rect.width < 4 || rect.height < 4) return;
       const color = parseColor(window.getComputedStyle(el).color);
       if (!color || color.a < 0.5) return;
-      checkedText.add(el);
+      checkedText.set(el, Date.now());
       const bg = backgroundOf(el);
       if (!bg) return;
       const l1 = luminance(color);
@@ -405,8 +464,39 @@
       const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
       // Гасим только тёмное на тёмном: это следствие нашей темы. Светлый
       // текст на цветном бейдже («Сегодня», «Цена что надо») — задумка
-      // Ozon, и осветлить его сильнее белого некуда.
-      if (ratio < 3 && l2 < 0.2) el.classList.add('ozon-clean-dim');
+      // Ozon, и осветлить его сильнее белого некуда. Обратный случай —
+      // светлый текст на светлой цветной плашке, которую нельзя перекрасить
+      // (слишком мелкая): там текст возвращаем к тёмному.
+      if (ratio >= 3) return;
+      if (l2 < 0.2) el.classList.add('ozon-clean-dim');
+      else if (l2 > 0.62) el.classList.add('ozon-clean-ink');
+    });
+  }
+
+  // Значки в кнопках Ozon нарисованы путями с fill="currentColor", а сам
+  // цвет унаследован от литерального тёмно-синего (rgb(8, 27, 43)): на
+  // тёмной кнопке значок пропадает. Проход по тексту такие узлы не видит —
+  // он смотрит только листья с текстом, а внутри svg текста нет.
+  function fixIcons() {
+    document.querySelectorAll('svg').forEach(function(svg) {
+      if (ownUi(svg)) return;
+      const lastCheck = checkedIcons.get(svg);
+      if (lastCheck && Date.now() - lastCheck < 2000) return;
+      if (svg.classList.contains('ozon-clean-icon')) return;
+      const r = svg.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      checkedIcons.set(svg, Date.now());
+      const color = parseColor(window.getComputedStyle(svg).color);
+      if (!color || color.a < 0.5) return;
+      const bg = backgroundOf(svg);
+      if (!bg) return;
+      const l1 = luminance(color);
+      const l2 = luminance(bg);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      // Порог ниже текстового: синий акцент Ozon (#005bff) на тёмном даёт
+      // около 2,7 и остаётся узнаваемым, а тёмно-синий значок — около 1,2.
+      if (ratio >= 2.2) return;
+      if (l2 < 0.2) svg.classList.add('ozon-clean-icon');
     });
   }
 
@@ -491,7 +581,7 @@
     cacheDirty = false;
     chrome.storage.local.set({ [UNIT_CACHE_KEY]: unitCache }).catch(function() {});
   }
-  setInterval(saveCache, 5000);
+  setInterval(function() { saveCache(); saveCartStore(); }, 5000);
 
   function productInfo(card) {
     const a = card.querySelector('a[href*="/product/"]');
@@ -705,6 +795,330 @@
     });
   }
 
+  // ===== Память цен в корзине =====
+  // В корзине Ozon нет ни ссылок на товар, ни data-атрибутов с SKU: вся
+  // разметка позиций — дивы с хешированными классами. Опознаём позицию по
+  // номеру фото из ir.ozone.ru/s3/multimedia-*/…/<id>.jpg и названию:
+  // фото стабильно, а название разделяет варианты одного товара. Запоминаем
+  // цену при каждом заходе в корзину и показываем разницу с прошлым заходом.
+  // Хранилище — localStorage, как и настройки: данные лежат только на
+  // устройстве и никуда не уходят.
+  let cartStore = readCartStore();
+  // Ключи, уже сопоставленные в этой загрузке страницы: сравнение делаем
+  // ровно один раз, иначе после перерисовки разница обнулилась бы.
+  const cartSeen = new Set();
+  const cartDeltas = {};
+  let cartDirty = false;
+
+  function readCartStore() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(CART_KEY) || '{}'); } catch (e) {}
+    const now = Date.now();
+    const out = {};
+    Object.keys(saved).forEach(function(k) {
+      const v = saved[k];
+      if (v && v.p > 0 && v.t && now - v.t < CART_TTL) out[k] = v;
+    });
+    return out;
+  }
+
+  function saveCartStore() {
+    if (!cartDirty) return;
+    const keys = Object.keys(cartStore);
+    if (keys.length > CART_LIMIT) {
+      keys.sort(function(a, b) { return cartStore[a].t - cartStore[b].t; });
+      keys.slice(0, keys.length - CART_LIMIT).forEach(function(k) { delete cartStore[k]; });
+    }
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cartStore)); } catch (e) {}
+    cartDirty = false;
+  }
+
+  function cartPriceEl(item) {
+    let found = null;
+    item.querySelectorAll('span').forEach(function(el) {
+      if (found || el.children.length) return;
+      const t = (el.textContent || '').trim();
+      if (!/^\d[\d\s]*\s*₽$/.test(t)) return;
+      if (isStruck(el)) return;
+      found = el;
+    });
+    return found;
+  }
+
+  // Корень позиции — самый высокий предок фото, который ещё содержит только
+  // это фото: у группы позиций (шапка «Доступны для заказа») фото уже
+  // несколько. Классы не используем, они хешированные.
+  function cartItemOf(img) {
+    const root = document.querySelector('[data-widget="cartSplit"]');
+    let cur = img;
+    while (cur !== root && cur.parentElement && cur.parentElement !== root) {
+      if (cur.parentElement.querySelectorAll('img[src*="/multimedia"]').length > 1) break;
+      cur = cur.parentElement;
+    }
+    return cur;
+  }
+
+  function cartItemKey(item) {
+    const img = item.querySelector('img[src*="/multimedia"]');
+    const m = img && (img.getAttribute('src') || '').match(/\/multimedia[^/]*\/[^/]*\/(\d+)\./);
+    const titleEl = findTitleEl(item);
+    const title = titleEl ? (titleEl.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    if (!m && !title) return '';
+    return (m ? m[1] : '') + '|' + title;
+  }
+
+  function formatCartDelta(delta) {
+    const num = Math.abs(delta).toLocaleString('ru-RU');
+    return (delta < 0 ? '↓ ' : '↑ ') + num + ' ₽';
+  }
+
+  function setCartBadge(item, priceEl, d) {
+    let badge = item.querySelector('.ozon-clean-cart-delta');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'ozon-clean-cart-delta';
+      priceEl.insertAdjacentElement('afterend', badge);
+    }
+    badge.classList.toggle('ozon-clean-cart-up', d.delta > 0);
+    badge.textContent = formatCartDelta(d.delta);
+    badge.title = 'В прошлый раз ' + d.was.toLocaleString('ru-RU') + ' ₽';
+  }
+
+  function cartPass() {
+    const root = document.querySelector('[data-widget="cartSplit"]');
+    if (!root) return;
+    root.querySelectorAll('img[src*="/multimedia"]').forEach(function(img) {
+      const item = cartItemOf(img);
+      if (!item) return;
+      const priceEl = cartPriceEl(item);
+      if (!priceEl) return;
+      const key = cartItemKey(item);
+      if (!key) return;
+      const price = parseInt((priceEl.textContent || '').replace(/[^\d]/g, ''), 10);
+      if (!(price > 0)) return;
+
+      if (!cartSeen.has(key)) {
+        cartSeen.add(key);
+        const prev = cartStore[key];
+        // Цена изменилась между заходами — запоминаем разницу; иначе метки нет.
+        if (prev && prev.p !== price) cartDeltas[key] = { delta: price - prev.p, was: prev.p };
+        cartStore[key] = { p: price, t: Date.now() };
+        cartDirty = true;
+      }
+      if (cartDeltas[key]) setCartBadge(item, priceEl, cartDeltas[key]);
+    });
+  }
+
+  function applyCart() {
+    root.classList.toggle('ozon-cart-prices', !!settings.cartPrices);
+    if (!settings.cartPrices) {
+      document.querySelectorAll('.ozon-clean-cart-delta').forEach(function(el) { el.remove(); });
+      return;
+    }
+    cartPass();
+  }
+
+  // ===== Акцентный цвет =====
+  // Ozon рисует акцент (кнопки, ссылки, чекбоксы, выделение) токенами
+  // --bgActionPrimary / --textAction / --ozCtrlPrimary и другими. Подменяем
+  // их своим цветом на <html>: токены наследуются вниз, и перекрашивается
+  // всё, что на них построено. Места, заданные литералами и картинками
+  // (логотип, платёжные значки), остаются как есть.
+  //
+  // Белый текст на светлом акценте нечитаем, поэтому цвет текста на плашке
+  // выбираем по контрасту и размечаем сами плашки классом
+  // ozon-clean-accent-bg: у наследников Ozon встречается белый текст
+  // литералом, переопределение токена его не достаёт.
+  let accentRgb = null;
+  let accentHex = '';
+
+  const INK_DARK = { r: 20, g: 24, b: 29, a: 1 };
+  const INK_LIGHT = { r: 255, g: 255, b: 255, a: 1 };
+
+  function hexToRgb(hex) {
+    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+    if (!m) return null;
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16), a: 1 };
+  }
+
+  function rgbToHex(c) {
+    function h(v) { return ('0' + Math.round(v).toString(16)).slice(-2); }
+    return '#' + h(c.r) + h(c.g) + h(c.b);
+  }
+
+  function darken(c, k) {
+    return { r: c.r * (1 - k), g: c.g * (1 - k), b: c.b * (1 - k), a: 1 };
+  }
+
+  function contrastOf(a, b) {
+    const l1 = luminance(a);
+    const l2 = luminance(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+
+  function applyAccent() {
+    const base = settings.accentOn ? hexToRgb(settings.accentColor) : null;
+    root.classList.toggle('ozon-accent', !!base);
+    // Метки плашек привязаны к конкретному цвету: при его смене старые
+    // снимаем, проход разметит заново.
+    const hex = base ? rgbToHex(base) : '';
+    if (hex !== accentHex) {
+      accentHex = hex;
+      document.querySelectorAll('.ozon-clean-accent-bg, .ozon-clean-accent-cut, .ozon-clean-pink, ' +
+        '.ozon-clean-pink-dark, .ozon-clean-pink-bg, .ozon-clean-pink-bg-soft').forEach(function(el) {
+        el.classList.remove('ozon-clean-accent-bg', 'ozon-clean-accent-cut', 'ozon-clean-pink',
+          'ozon-clean-pink-dark', 'ozon-clean-pink-bg', 'ozon-clean-pink-bg-soft');
+        el.style.removeProperty('--oc-pink-a');
+      });
+      accentLastPass = 0;
+      accentLastFull = 0;
+      accentPending.clear();
+    }
+    if (!base) {
+      accentRgb = null;
+      accentPending.clear();
+      ['--oc-a', '--oc-ah', '--oc-aa', '--oc-ink', '--oc-text'].forEach(function(p) {
+        root.style.removeProperty(p);
+      });
+      return;
+    }
+    accentRgb = base;
+    // На светлой подложке акцентный текст затемняем до контраста 4.5:1
+    // с белым; на тёмной сам акцент уже читается. Шаг мелкий, чтобы цвет
+    // оставался насыщенным, а не уходил в коричневый.
+    let text = base;
+    for (let i = 0; i < 40 && contrastOf(text, INK_LIGHT) < 4.5; i++) text = darken(text, 0.04);
+    const ink = contrastOf(base, INK_DARK) >= contrastOf(base, INK_LIGHT) ? INK_DARK : INK_LIGHT;
+    root.style.setProperty('--oc-a', rgbToHex(base));
+    root.style.setProperty('--oc-ah', rgbToHex(darken(base, 0.14)));
+    root.style.setProperty('--oc-aa', rgbToHex(darken(base, 0.24)));
+    root.style.setProperty('--oc-ink', rgbToHex(ink));
+    root.style.setProperty('--oc-text', rgbToHex(text));
+  }
+
+  // Ценники Ozon красит брендовым розовым двумя способами: цветом из токена
+  // (тогда он уже перекрашен CSS-подменой токенов) и инлайновым градиентом с
+  // background-clip: text, где color прозрачный. Градиент токеном не достать,
+  // как и литеральные розовые, поэтому проход по DOM размечает такие узлы, а
+  // CSS перекрашивает их в акцент. Розовые токены уже подменены акцентом —
+  // их значения при поиске не используются.
+  // Оттенки розового Ozon лежат в одном углу RGB: красный канал максимум,
+  // зелёный минимум и заметно ниже синего, красный выше синего. Фиксированный
+  // список сюда не годится — кроме трёх брендовых тонов есть светлые подложки
+  // (rgba(255, 121, 171, .08)) и их непрозрачные смеси, а лиловый и красный
+  // этим условием не проходят.
+  function pinkish(c, minDelta) {
+    return c.a >= 0.05 && c.r > c.b && c.g < c.b && c.r - c.g >= minDelta;
+  }
+
+  function isPink(c) {
+    return !!c && pinkish(c, 12);
+  }
+
+  function isPinkText(c) {
+    return !!c && pinkish(c, 40);
+  }
+
+  function isPinkGradient(image) {
+    if (!image || image === 'none') return false;
+    const m = image.match(/rgba?\(\d+,\s*\d+,\s*\d+(?:,\s*[\d.]+)?\)/g);
+    return !!m && m.some(function(part) {
+      return isPinkText(parseColor(part));
+    });
+  }
+
+  // Плашки с акцентным фоном получают контрастный текст и значки (у них
+  // fill="currentColor"). Отрицательный результат не кэшируем: фон плашки
+  // часто меняется сменой класса у уже проверенного узла (активная вкладка,
+  // выбранный пункт меню), а MutationObserver классы не видит. Поэтому проход
+  // повторяется при каждой пачке мутаций. В этом же проходе убирается
+  // розовый: он бывает токеном, литеральным цветом и градиентом, и токены до
+  // двух последних не достают. Полный обход документа дорог на длинных
+  // страницах, поэтому по свежим мутациям проверяются только вставленные
+  // поддеревья, а весь документ — не чаще раза в 2,5 с: смена класса без
+  // вставки узлов иначе не попадёт в разметку.
+  let accentLastPass = 0;
+  let accentLastFull = 0;
+  // Новые поддеревья из MutationObserver: их проверяем сразу, не дожидаясь
+  // полного обхода — Ozon дорисовывает карточки порциями.
+  const accentPending = new Set();
+
+  // Внутри акцентной плашки бывают свои подложки: у строки поиска акцентом
+  // красится «рамка» формы, а поле ввода внутри — отдельная тёмная панель.
+  // Правило «текст на акцентной плашке тёмный» каскадом доставало и до неё,
+  // из-за чего в тёмной теме текст поля становился невидимым. Такие поддеревья
+  // помечаем и исключаем из правила — цвет их текста ведёт проход тёмной темы.
+  function markAccentCuts(container) {
+    container.querySelectorAll('*').forEach(function(child) {
+      if (child.classList.contains('ozon-clean-accent-cut')) return;
+      const cbg = parseColor(window.getComputedStyle(child).backgroundColor);
+      if (!cbg || cbg.a < 0.9) return;
+      if (Math.abs(cbg.r - accentRgb.r) <= 6 && Math.abs(cbg.g - accentRgb.g) <= 6 &&
+          Math.abs(cbg.b - accentRgb.b) <= 6) return;
+      child.classList.add('ozon-clean-accent-cut');
+    });
+  }
+
+  function accentPass() {
+    if (!accentRgb) return;
+    const now = Date.now();
+    const full = now - accentLastFull >= 2500;
+    if (!full && !accentPending.size) return;
+    if (now - accentLastPass < 400) return;
+    accentLastPass = now;
+    let nodes;
+    if (full) {
+      accentLastFull = now;
+      accentPending.clear();
+      nodes = document.querySelectorAll('body *');
+    } else {
+      nodes = [];
+      accentPending.forEach(function(root) {
+        if (!root.isConnected || root.nodeType !== 1) return;
+        nodes.push(root);
+        root.querySelectorAll('*').forEach(function(child) { nodes.push(child); });
+      });
+      accentPending.clear();
+    }
+    nodes.forEach(function(el) {
+      if (ownUi(el)) return;
+      const cs = window.getComputedStyle(el);
+      const bg = parseColor(cs.backgroundColor);
+      if (bg && bg.a >= 0.05 && isPink(bg)) {
+        // Долю розового в подложке сохраняем: плашка остаётся полупрозрачной.
+        // У полупрозрачной подложки текст на светлой теме всегда тёмный:
+        // --oc-ink подобран под сплошной акцент и на светлом тоне не читается.
+        const cls = bg.a < 0.5 ? 'ozon-clean-pink-bg-soft' : 'ozon-clean-pink-bg';
+        if (!el.classList.contains(cls)) {
+          el.style.setProperty('--oc-pink-a', bg.a.toFixed(2));
+          el.classList.add(cls);
+        }
+        return;
+      }
+      if (el.classList.contains('ozon-clean-accent-bg')) return;
+      if (bg && bg.a >= 0.5 && Math.abs(bg.r - accentRgb.r) <= 6 &&
+          Math.abs(bg.g - accentRgb.g) <= 6 && Math.abs(bg.b - accentRgb.b) <= 6) {
+        el.classList.add('ozon-clean-accent-bg');
+        markAccentCuts(el);
+        return;
+      }
+      // Розовый текст и градиентные ценники — только листья, чтобы не
+      // перекрашивать контейнеры целиком.
+      if (el.children.length) return;
+      if (el.closest('.ozon-clean-pink-bg, .ozon-clean-pink-bg-soft, .ozon-clean-accent-bg')) return;
+      const pinkGradient = isPinkGradient(cs.backgroundImage);
+      if (!pinkGradient && !isPinkText(parseColor(cs.color))) return;
+      // Под текстом должна быть известная подложка: на картинке цвет не меняем.
+      // У градиентного ценника картинка лежит в нём самом (background-clip:
+      // text), подложку ищем начиная с родителя.
+      const under = backgroundOf(pinkGradient ? el.parentElement : el);
+      if (!under) return;
+      // На тёмной подложке акцент и так читается, на светлой — затемняем.
+      const cls = luminance(under) < 0.35 ? 'ozon-clean-pink-dark' : 'ozon-clean-pink';
+      if (!el.classList.contains(cls)) el.classList.add(cls);
+    });
+  }
+
   // ===== Общий проход =====
   let scheduled = false;
   function processPage() {
@@ -715,16 +1129,29 @@
     // decorateTile и decorateProductPage сами убирают бейджи, когда опция выключена.
     document.querySelectorAll('.tile-root').forEach(function(card) { decorateTile(card); });
     decorateProductPage();
+    applyCart();
+    accentPass();
     markWide();
     if (settings.clampTitles) applyTitles();
     if (resolvedTheme() === 'dark') {
       markSurfaces();
       markHeader();
       fixContrast();
+      fixIcons();
       markDots();
     }
   }
-  function schedule() {
+  function schedule(records) {
+    // Запоминаем только что вставленные поддеревья: их размечаем сразу, а
+    // полный обход документа остаётся для смены классов без вставки узлов.
+    if (records) {
+      for (let i = 0; i < records.length; i++) {
+        const added = records[i].addedNodes;
+        for (let j = 0; j < added.length; j++) {
+          if (added[j].nodeType === 1) accentPending.add(added[j]);
+        }
+      }
+    }
     if (scheduled) return;
     scheduled = true;
     setTimeout(processPage, 250);
@@ -737,6 +1164,7 @@
     applyPrices();
     applyWide();
     applyTheme();
+    applyAccent();
     applyTitles();
     processPage();
   }
